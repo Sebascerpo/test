@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface ProductCatalogProps {
   onSelectProduct?: () => void;
+  refreshSignal?: number;
 }
 
 const formatPrice = (price: number) =>
@@ -107,6 +108,11 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
               <img
                 src={product.imageUrl}
                 alt={product.name}
+                loading="lazy"
+                decoding="async"
+                width={640}
+                height={480}
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out ${
                   !isOutOfStock
                     ? "group-hover:scale-110"
@@ -231,7 +237,10 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
   );
 }
 
-export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
+export function ProductCatalog({
+  onSelectProduct,
+  refreshSignal = 0,
+}: ProductCatalogProps) {
   const dispatch = useAppDispatch();
   const { transactionResult } = useAppSelector((s) => s.payment);
   const [products, setProducts] = useState<Product[]>([]);
@@ -258,6 +267,10 @@ export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
   useEffect(() => {
     if (transactionResult?.status === "APPROVED") fetchProducts();
   }, [transactionResult?.status]);
+
+  useEffect(() => {
+    if (refreshSignal > 0) fetchProducts();
+  }, [refreshSignal]);
 
   const handleSelect = (product: Product, quantity: number) => {
     if (product.stock <= 0) return;

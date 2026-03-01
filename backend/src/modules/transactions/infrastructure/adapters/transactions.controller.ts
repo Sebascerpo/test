@@ -175,7 +175,11 @@ export class TransactionsController {
   async syncByReference(@Param('reference') reference: string) {
     const result = await this.syncTransactionStatusUseCase(reference);
 
-    return match<SyncTransactionStatusResult, Error, SyncTransactionResponseDto>(
+    return match<
+      SyncTransactionStatusResult,
+      Error,
+      SyncTransactionResponseDto
+    >(
       (data) => ({
         success: true,
         transaction: data.transaction,
@@ -186,7 +190,11 @@ export class TransactionsController {
       }),
       (error) => {
         throw new HttpException(
-          { success: false, code: 'TRANSACTION_SYNC_FAILED', message: error.message },
+          {
+            success: false,
+            code: 'TRANSACTION_SYNC_FAILED',
+            message: error.message,
+          },
           HttpStatus.BAD_REQUEST,
         );
       },

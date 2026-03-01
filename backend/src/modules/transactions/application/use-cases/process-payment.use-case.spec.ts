@@ -87,12 +87,18 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
         value: {
-          transaction: { ...pendingTransaction, status: TransactionStatus.APPROVED },
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.APPROVED,
+          },
           deliveryId: 'delivery-1',
           stockUpdated: true,
         },
@@ -113,11 +119,19 @@ describe('process-payment.use-case', () => {
       }),
       createTransaction: jest.fn().mockResolvedValue({
         success: true,
-        value: { id: 'ext-1', status: 'APPROVED', reference: baseInput.reference },
+        value: {
+          id: 'ext-1',
+          status: 'APPROVED',
+          reference: baseInput.reference,
+        },
       }),
       generateSignature: jest.fn().mockReturnValue('sig-1'),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -159,12 +173,18 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
         value: {
-          transaction: { ...pendingTransaction, status: TransactionStatus.ERROR },
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.ERROR,
+          },
           stockUpdated: false,
         },
       }),
@@ -175,7 +195,11 @@ describe('process-payment.use-case', () => {
         error: new Error('token failed'),
       }),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -205,7 +229,11 @@ describe('process-payment.use-case', () => {
       }),
     };
     const paymentGateway: any = {};
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -240,11 +268,19 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: { ...pendingTransaction, status: TransactionStatus.ERROR } },
+        value: {
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.ERROR,
+          },
+        },
       }),
     };
     const paymentGateway: any = {
@@ -257,7 +293,11 @@ describe('process-payment.use-case', () => {
         error: new Error('acceptance failed'),
       }),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -295,11 +335,19 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: { ...pendingTransaction, status: TransactionStatus.ERROR } },
+        value: {
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.ERROR,
+          },
+        },
       }),
     };
     const paymentGateway: any = {
@@ -316,7 +364,11 @@ describe('process-payment.use-case', () => {
         error: new Error('source failed'),
       }),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -354,11 +406,19 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: { ...pendingTransaction, status: TransactionStatus.DECLINED } },
+        value: {
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.DECLINED,
+          },
+        },
       }),
     };
     const paymentGateway: any = {
@@ -376,11 +436,19 @@ describe('process-payment.use-case', () => {
       }),
       createTransaction: jest.fn().mockResolvedValue({
         success: true,
-        value: { id: 'ext-4', status: 'DECLINED', reference: baseInput.reference },
+        value: {
+          id: 'ext-4',
+          status: 'DECLINED',
+          reference: baseInput.reference,
+        },
       }),
       generateSignature: jest.fn().mockReturnValue('sig-4'),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -418,11 +486,19 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: { ...pendingTransaction, status: TransactionStatus.ERROR } },
+        value: {
+          transaction: {
+            ...pendingTransaction,
+            status: TransactionStatus.ERROR,
+          },
+        },
       }),
     };
     const paymentGateway: any = {
@@ -440,11 +516,19 @@ describe('process-payment.use-case', () => {
       }),
       createTransaction: jest.fn().mockResolvedValue({
         success: true,
-        value: { id: 'ext-5', status: 'VOIDED', reference: baseInput.reference },
+        value: {
+          id: 'ext-5',
+          status: 'VOIDED',
+          reference: baseInput.reference,
+        },
       }),
       generateSignature: jest.fn().mockReturnValue('sig-5'),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,
@@ -482,7 +566,10 @@ describe('process-payment.use-case', () => {
     const paymentCoordinator: any = {
       initializePendingPayment: jest.fn().mockResolvedValue({
         success: true,
-        value: { transaction: pendingTransaction, customerEmail: 'jane@example.com' },
+        value: {
+          transaction: pendingTransaction,
+          customerEmail: 'jane@example.com',
+        },
       }),
       finalizePayment: jest.fn().mockResolvedValue({
         success: false,
@@ -504,11 +591,19 @@ describe('process-payment.use-case', () => {
       }),
       createTransaction: jest.fn().mockResolvedValue({
         success: true,
-        value: { id: 'ext-6', status: 'PENDING', reference: baseInput.reference },
+        value: {
+          id: 'ext-6',
+          status: 'PENDING',
+          reference: baseInput.reference,
+        },
       }),
       generateSignature: jest.fn().mockReturnValue('sig-6'),
     };
-    const paymentConfig: any = { currency: 'COP', baseFee: 100, deliveryFee: 200 };
+    const paymentConfig: any = {
+      currency: 'COP',
+      baseFee: 100,
+      deliveryFee: 200,
+    };
 
     const useCase = createProcessPaymentUseCase(
       transactionRepository,

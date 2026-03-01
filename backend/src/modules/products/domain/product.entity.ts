@@ -17,7 +17,7 @@ export interface ProductStock {
 }
 
 // Domain Events
-export type ProductEvent = 
+export type ProductEvent =
   | { type: 'PRODUCT_CREATED'; payload: Product }
   | { type: 'STOCK_UPDATED'; payload: ProductStock }
   | { type: 'STOCK_DEPLETED'; payload: string };

@@ -28,7 +28,8 @@ export const createSyncTransactionStatusUseCase = (
     idOrReference: string,
   ): ResultAsync<SyncTransactionStatusResult> => {
     try {
-      let transaction = await transactionRepository.findByReference(idOrReference);
+      let transaction =
+        await transactionRepository.findByReference(idOrReference);
       if (!transaction) {
         const uuidRegex =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

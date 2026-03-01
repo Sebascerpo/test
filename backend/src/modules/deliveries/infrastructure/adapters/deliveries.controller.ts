@@ -26,7 +26,11 @@ export class DeliveriesController {
     const delivery = await this.deliveryRepository.findById(id);
     if (!delivery) {
       throw new HttpException(
-        { success: false, code: 'DELIVERY_NOT_FOUND', message: 'Delivery not found' },
+        {
+          success: false,
+          code: 'DELIVERY_NOT_FOUND',
+          message: 'Delivery not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }
@@ -38,12 +42,17 @@ export class DeliveriesController {
   async findByTransactionReference(
     @Param('transactionReference') transactionReference: string,
   ) {
-    const delivery = await this.deliveryRepository.findByTransactionReference(
-      transactionReference,
-    );
+    const delivery =
+      await this.deliveryRepository.findByTransactionReference(
+        transactionReference,
+      );
     if (!delivery) {
       throw new HttpException(
-        { success: false, code: 'DELIVERY_NOT_FOUND', message: 'Delivery not found' },
+        {
+          success: false,
+          code: 'DELIVERY_NOT_FOUND',
+          message: 'Delivery not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }
@@ -56,10 +65,17 @@ export class DeliveriesController {
     @Param('id') id: string,
     @Body() body: UpdateDeliveryStatusDto,
   ) {
-    const delivery = await this.deliveryRepository.updateStatus(id, body.status);
+    const delivery = await this.deliveryRepository.updateStatus(
+      id,
+      body.status,
+    );
     if (!delivery) {
       throw new HttpException(
-        { success: false, code: 'DELIVERY_NOT_FOUND', message: 'Delivery not found' },
+        {
+          success: false,
+          code: 'DELIVERY_NOT_FOUND',
+          message: 'Delivery not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }

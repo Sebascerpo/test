@@ -42,7 +42,11 @@ export class CustomersController {
 
     if (!result.success) {
       throw new HttpException(
-        { success: false, code: 'CUSTOMER_UPSERT_FAILED', message: result.error.message },
+        {
+          success: false,
+          code: 'CUSTOMER_UPSERT_FAILED',
+          message: result.error.message,
+        },
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -56,7 +60,11 @@ export class CustomersController {
     const customer = await this.customerRepository.findById(id);
     if (!customer) {
       throw new HttpException(
-        { success: false, code: 'CUSTOMER_NOT_FOUND', message: 'Customer not found' },
+        {
+          success: false,
+          code: 'CUSTOMER_NOT_FOUND',
+          message: 'Customer not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }
@@ -69,7 +77,11 @@ export class CustomersController {
     const customer = await this.customerRepository.findByEmail(email);
     if (!customer) {
       throw new HttpException(
-        { success: false, code: 'CUSTOMER_NOT_FOUND', message: 'Customer not found' },
+        {
+          success: false,
+          code: 'CUSTOMER_NOT_FOUND',
+          message: 'Customer not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }

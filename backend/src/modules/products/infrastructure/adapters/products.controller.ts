@@ -53,7 +53,11 @@ export class ProductsController {
     const product = await this.productRepository.findById(id);
     if (!product) {
       throw new HttpException(
-        { success: false, code: 'PRODUCT_NOT_FOUND', message: 'Product not found' },
+        {
+          success: false,
+          code: 'PRODUCT_NOT_FOUND',
+          message: 'Product not found',
+        },
         HttpStatus.NOT_FOUND,
       );
     }

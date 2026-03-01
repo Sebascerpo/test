@@ -24,7 +24,6 @@ const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
 
 interface BackdropSummaryProps {
   onBack: () => void;
-  onComplete: () => void;
 }
 
 const fmt = (p: number) =>
@@ -59,13 +58,14 @@ function Row({
   );
 }
 
-export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
+export function BackdropSummary({ onBack }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
   const { isOnline } = useNetworkStatus();
   const {
     selectedProduct,
     quantity,
-    creditCard,
+    cardPreview,
+    sensitiveSession,
     deliveryInfo,
     isLoading,
     error,
@@ -83,7 +83,7 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
     setToastMessage(null);
   }, [isOnline]);
 
-  if (!selectedProduct || !creditCard || !deliveryInfo) return null;
+  if (!selectedProduct || !cardPreview || !deliveryInfo) return null;
 
   const productTotal = selectedProduct.price * quantity;
   const total = productTotal + FEES.baseFee + FEES.deliveryFee;
@@ -93,9 +93,10 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
     setTapped(true);
 
     // ── Step 1: Fire ROP-style API call via Thunk ────────────────────────────
-    const action = await dispatch(processPayment());
+    const action = await dispatch(
+      processPayment({ card: sensitiveSession.card || undefined }),
+    );
     if (processPayment.fulfilled.match(action) && action.payload.success) {
-      onComplete();
       return;
     }
 
@@ -175,9 +176,9 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                 <CreditCardIcon size={11} className="text-muted-foreground" />
                 <p className="sc-label !mb-0">Tarjeta</p>
               </div>
-              <p className="text-sm font-semibold">{creditCard.brand}</p>
+              <p className="text-sm font-semibold">{cardPreview.brand}</p>
               <p className="text-xs text-muted-foreground font-mono">
-                •••• {creditCard.number.slice(-4)}
+                •••• {cardPreview.last4 || "----"}
               </p>
               <div className="flex items-center gap-1 mt-1">
                 <div className="w-4 h-4 rounded-full bg-foreground flex items-center justify-center">
@@ -261,6 +262,15 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                 className="text-center text-[11px] text-red-500 mb-2 font-medium"
               >
                 {error}
+              </motion.p>
+            )}
+            {!sensitiveSession.card && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-[11px] text-amber-600 mb-2 font-medium"
+              >
+                Por seguridad debes reingresar número de tarjeta y CVC antes de pagar.
               </motion.p>
             )}
           </AnimatePresence>

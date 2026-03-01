@@ -46,7 +46,9 @@ export const createProcessPaymentUseCase = (
     input: ProcessPaymentInput,
   ): ResultAsync<ProcessPaymentResult> => {
     if (input.reference) {
-      const existing = await transactionRepository.findByReference(input.reference);
+      const existing = await transactionRepository.findByReference(
+        input.reference,
+      );
       if (existing) {
         return ok({
           transaction: existing,

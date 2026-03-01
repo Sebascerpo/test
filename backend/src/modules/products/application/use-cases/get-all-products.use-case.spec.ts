@@ -3,9 +3,9 @@ import { createGetAllProductsUseCase } from './get-all-products.use-case';
 describe('get-all-products.use-case', () => {
   it('returns products from repository', async () => {
     const repository: any = {
-      findAll: jest.fn().mockResolvedValue([
-        { id: 'p-1', name: 'Product 1', stock: 2 },
-      ]),
+      findAll: jest
+        .fn()
+        .mockResolvedValue([{ id: 'p-1', name: 'Product 1', stock: 2 }]),
     };
 
     const useCase = createGetAllProductsUseCase(repository);

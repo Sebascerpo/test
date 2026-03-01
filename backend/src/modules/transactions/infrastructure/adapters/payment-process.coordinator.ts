@@ -110,7 +110,9 @@ export class PaymentProcessCoordinator implements PaymentProcessCoordinatorPort 
     }
   }
 
-  async finalizePayment(input: FinalizePaymentInput): ResultAsync<FinalizePaymentResult> {
+  async finalizePayment(
+    input: FinalizePaymentInput,
+  ): ResultAsync<FinalizePaymentResult> {
     const runner = this.dataSource.createQueryRunner();
     await runner.connect();
 

@@ -2,16 +2,16 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import {
   setCurrentStep,
   reset,
-  syncTransactionStatus,
 } from "@/store/payment-store";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { ProductCatalog } from "@/components/payment/ProductCatalog";
-import { PaymentModal } from "@/components/payment/PaymentModal";
-import { BackdropSummary } from "@/components/payment/BackdropSummary";
-import { TransactionResultPage } from "@/components/payment/TransactionResultPage";
-import { TransactionNotification } from "@/components/payment/TransactionNotification";
+import { usePendingTransactionRecovery } from "@/hooks/usePendingTransactionRecovery";
+import { ProductCatalog } from "@/features/catalog/components/ProductCatalog";
+import { PaymentModal } from "@/features/checkout/components/PaymentModal";
+import { BackdropSummary } from "@/features/checkout/components/BackdropSummary";
+import { TransactionResultPage } from "@/features/transaction/components/TransactionResultPage";
+import { TransactionNotification } from "@/features/transaction/components/TransactionNotification";
 import { ShieldCheckIcon } from "@/components/icons";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 function AppContent() {
@@ -21,20 +21,22 @@ function AppContent() {
     selectedProduct,
     pendingTransactionReference,
     transactionResult,
-    creditCard,
+    cardPreview,
     deliveryInfo,
   } = useAppSelector((state) => state.payment);
 
   const { isOnline } = useNetworkStatus();
+  usePendingTransactionRecovery();
 
   // Toast shown ONLY when user leaves result page — never on immediate completion
   const [showToast, setShowToast] = useState(false);
+  const [catalogRefreshSignal, setCatalogRefreshSignal] = useState(0);
 
   const showPaymentModal = currentStep === "payment-info" && !!selectedProduct;
   const showBackdrop =
     currentStep === "summary" &&
     !!selectedProduct &&
-    !!creditCard &&
+    !!cardPreview &&
     !!deliveryInfo;
   const showResultPage =
     currentStep === "result" &&
@@ -61,45 +63,18 @@ function AppContent() {
     dispatch(setCurrentStep("payment-info"));
   }, [dispatch]);
 
-  // BackdropSummary already sets step to "result" — nothing to do here
-  const handlePaymentResult = useCallback(() => {}, []);
-
-  // Result page → user taps dismiss → trigger toast on product page
-  const handleResultDismiss = useCallback((triggerToast: boolean) => {
-    if (triggerToast) setShowToast(true);
-    // reset() is dispatched inside TransactionResultPage before calling this
-  }, []);
-
-  // ── Polling logic (Centralized) ──────────────────────────────────────────────
-  const syncStatus = useCallback(async () => {
-    if (!pendingTransactionReference) return;
-    await dispatch(syncTransactionStatus(pendingTransactionReference));
-  }, [pendingTransactionReference, dispatch]);
-
-  // ── Initial and Recovery Logic ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!pendingTransactionReference) return;
-    dispatch(setCurrentStep("result"));
-    syncStatus();
-  }, [dispatch, pendingTransactionReference, syncStatus]);
-
-  useEffect(() => {
-    if (!pendingTransactionReference || !isOnline) return;
-
-    // First check after 2s
-    const firstSync = setTimeout(syncStatus, 2000);
-    // Then every 5s
-    const interval = setInterval(syncStatus, 5000);
-
-    return () => {
-      clearTimeout(firstSync);
-      clearInterval(interval);
-    };
-  }, [
-    pendingTransactionReference,
-    isOnline,
-    syncStatus,
-  ]);
+  const handleResultDismiss = useCallback(
+    (options: { showToast: boolean; refreshProducts: boolean }) => {
+      if (options.showToast) {
+        setShowToast(true);
+      }
+      if (options.refreshProducts) {
+        setCatalogRefreshSignal((value) => value + 1);
+      }
+      dispatch(setCurrentStep("product"));
+    },
+    [dispatch],
+  );
 
   const handleNotificationDismiss = useCallback(() => {
     setShowToast(false);
@@ -155,7 +130,10 @@ function AppContent() {
               : "transition-opacity"
           }
         >
-          <ProductCatalog onSelectProduct={handleProductSelect} />
+          <ProductCatalog
+            onSelectProduct={handleProductSelect}
+            refreshSignal={catalogRefreshSignal}
+          />
         </div>
 
         {/* Step: payment-info */}
@@ -172,7 +150,6 @@ function AppContent() {
         {showBackdrop && (
           <BackdropSummary
             onBack={handleBackdropBack}
-            onComplete={handlePaymentResult}
           />
         )}
 

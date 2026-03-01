@@ -1,6 +1,9 @@
 import { ResultAsync } from '../../../../shared/common/rop';
 import { DeliveryInfo } from '../../../customers/domain/customer.entity';
-import { Transaction, TransactionStatus } from '../../domain/transaction.entity';
+import {
+  Transaction,
+  TransactionStatus,
+} from '../../domain/transaction.entity';
 
 export interface InitializePendingPaymentInput {
   reference?: string;

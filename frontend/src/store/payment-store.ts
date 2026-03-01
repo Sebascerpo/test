@@ -18,17 +18,25 @@ import storage from "redux-persist/lib/storage";
 import type { ApiFailure } from "@/lib/payment-api";
 import { processPaymentApi, syncTransactionStatusApi } from "@/lib/payment-api";
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
 export type Step = "product" | "payment-info" | "summary" | "result";
 
-export interface CreditCard {
+export type CardBrand = "VISA" | "MASTERCARD" | "UNKNOWN";
+
+export interface RuntimeCardData {
   number: string;
   holderName: string;
   expiryMonth: string;
   expiryYear: string;
   cvc: string;
-  brand: "VISA" | "MASTERCARD" | "UNKNOWN";
+  brand: CardBrand;
+}
+
+export interface CardPreview {
+  brand: CardBrand;
+  last4: string;
+  holderName: string;
+  expiryMonth: string;
+  expiryYear: string;
 }
 
 export interface DeliveryInfo {
@@ -68,12 +76,19 @@ interface PaymentState {
   currentStep: Step;
   selectedProduct: Product | null;
   quantity: number;
-  creditCard: CreditCard | null;
+  cardPreview: CardPreview | null;
+  cardEntryComplete: boolean;
   deliveryInfo: DeliveryInfo | null;
   pendingTransactionReference: string | null;
   pendingStartedAt: number | null;
   transactionResult: TransactionResult | null;
   isLoading: boolean;
+  isSyncing: boolean;
+  lastSyncAt: number | null;
+  syncReference: string | null;
+  sensitiveSession: {
+    card: RuntimeCardData | null;
+  };
   error: string | null;
 }
 
@@ -81,18 +96,22 @@ const initialState: PaymentState = {
   currentStep: "product",
   selectedProduct: null,
   quantity: 1,
-  creditCard: null,
+  cardPreview: null,
+  cardEntryComplete: false,
   deliveryInfo: null,
   pendingTransactionReference: null,
   pendingStartedAt: null,
   transactionResult: null,
   isLoading: false,
+  isSyncing: false,
+  lastSyncAt: null,
+  syncReference: null,
+  sensitiveSession: {
+    card: null,
+  },
   error: null,
 };
 
-/**
- * ROP Result Type for API calls
- */
 export type AsyncResult<T> =
   | { success: true; data: T }
   | { success: false; error: ApiFailure };
@@ -107,17 +126,19 @@ const createClientPaymentReference = (): string => {
   return `TX-${timestamp}-${random}`;
 };
 
-// ── Async Thunks (ROP Principles) ───────────────────────────────────────────
+const isTerminalStatus = (
+  status: TransactionResult["status"],
+): boolean => status !== "PENDING";
 
-/**
- * Step 2: Disaster Recovery - Process Payment
- * Initiates the payment, immediate persistence of PENDING state.
- */
 export const processPayment = createAsyncThunk(
   "payment/process",
-  async (_, { getState, dispatch }): Promise<AsyncResult<TransactionResult>> => {
+  async (
+    payload: { card?: RuntimeCardData } | undefined,
+    { getState, dispatch },
+  ): Promise<AsyncResult<TransactionResult>> => {
     const state = (getState() as { payment: PaymentState }).payment;
-    if (!state.selectedProduct || !state.creditCard || !state.deliveryInfo) {
+
+    if (!state.selectedProduct || !state.deliveryInfo) {
       return {
         success: false,
         error: {
@@ -128,6 +149,23 @@ export const processPayment = createAsyncThunk(
       };
     }
 
+    const runtimeCard = payload?.card || state.sensitiveSession.card;
+    if (!runtimeCard) {
+      dispatch(setCardEntryComplete(false));
+      dispatch(setCurrentStep("payment-info"));
+      return {
+        success: false,
+        error: {
+          code: "CARD_DATA_REQUIRED",
+          message:
+            "Por seguridad, vuelve a ingresar el número de tarjeta y el CVC para continuar con el pago.",
+          retryable: false,
+        },
+      };
+    }
+
+    dispatch(setRuntimeCard(runtimeCard));
+
     const reference =
       state.pendingTransactionReference || createClientPaymentReference();
     dispatch(setPendingTransactionReference(reference));
@@ -136,7 +174,7 @@ export const processPayment = createAsyncThunk(
       reference,
       productId: state.selectedProduct.id,
       quantity: state.quantity,
-      card: state.creditCard,
+      card: runtimeCard,
       delivery: state.deliveryInfo,
     });
 
@@ -149,10 +187,6 @@ export const processPayment = createAsyncThunk(
   },
 );
 
-/**
- * Step 2: Disaster Recovery - Sync Status
- * Recovers a PENDING transaction after a page refresh or network loss.
- */
 export const syncTransactionStatus = createAsyncThunk(
   "payment/sync",
   async (
@@ -177,13 +211,37 @@ export const syncTransactionStatus = createAsyncThunk(
     }
 
     const result = await syncTransactionStatusApi(pendingReference);
-    if (!result.ok) return { success: false, error: result.error };
+    if (!result.ok) {
+      return { success: false, error: result.error };
+    }
 
     return { success: true, data: result.value };
   },
-);
+  {
+    condition: (reference, { getState }) => {
+      const state = (getState() as { payment: PaymentState }).payment;
+      const pendingReference =
+        reference ||
+        state.pendingTransactionReference ||
+        state.transactionResult?.transactionNumber;
 
-// ── Redux Slice ─────────────────────────────────────────────────────────────
+      if (!pendingReference) return false;
+      if (state.isSyncing && state.syncReference === pendingReference) return false;
+
+      const recentSyncMs = 900;
+      const elapsed = state.lastSyncAt ? Date.now() - state.lastSyncAt : null;
+      if (
+        elapsed !== null &&
+        elapsed < recentSyncMs &&
+        state.syncReference === pendingReference
+      ) {
+        return false;
+      }
+
+      return true;
+    },
+  },
+);
 
 const paymentSlice = createSlice({
   name: "payment",
@@ -195,18 +253,19 @@ const paymentSlice = createSlice({
     ) => {
       state.selectedProduct = action.payload.product;
       state.quantity = action.payload.quantity;
+      state.error = null;
     },
-    setCreditCard: (state, action: PayloadAction<CreditCard>) => {
-      state.creditCard = action.payload;
+    setCardPreview: (state, action: PayloadAction<CardPreview | null>) => {
+      state.cardPreview = action.payload;
+    },
+    setCardEntryComplete: (state, action: PayloadAction<boolean>) => {
+      state.cardEntryComplete = action.payload;
+    },
+    setRuntimeCard: (state, action: PayloadAction<RuntimeCardData | null>) => {
+      state.sensitiveSession.card = action.payload;
     },
     setDeliveryInfo: (state, action: PayloadAction<DeliveryInfo>) => {
       state.deliveryInfo = action.payload;
-    },
-    setTransactionResult: (
-      state,
-      action: PayloadAction<TransactionResult | null>,
-    ) => {
-      state.transactionResult = action.payload;
     },
     setPendingTransactionReference: (state, action: PayloadAction<string>) => {
       if (state.pendingTransactionReference !== action.payload) {
@@ -214,101 +273,128 @@ const paymentSlice = createSlice({
       }
       state.pendingTransactionReference = action.payload;
     },
-    clearPendingTransactionReference: (state) => {
-      state.pendingTransactionReference = null;
-      state.pendingStartedAt = null;
-    },
     setCurrentStep: (state, action: PayloadAction<Step>) => {
       state.currentStep = action.payload;
     },
     reset: () => initialState,
   },
   extraReducers: (builder) => {
-    // Handle processing
     builder.addCase(processPayment.pending, (state) => {
       state.isLoading = true;
       state.error = null;
     });
+
     builder.addCase(processPayment.fulfilled, (state, action) => {
       state.isLoading = false;
       if (action.payload.success) {
         state.transactionResult = action.payload.data;
         state.currentStep = "result";
-        if (action.payload.data.status !== "PENDING") {
+        state.sensitiveSession.card = null;
+        state.cardEntryComplete = false;
+        if (isTerminalStatus(action.payload.data.status)) {
           state.pendingTransactionReference = null;
+          state.pendingStartedAt = null;
         }
       } else {
         state.error = action.payload.error.message;
       }
     });
+
     builder.addCase(processPayment.rejected, (state) => {
       state.isLoading = false;
       state.error =
         "No pudimos completar el pago en este momento. Inténtalo nuevamente.";
     });
 
-    // Handle sync (recovery)
-    builder.addCase(syncTransactionStatus.pending, (state) => {
+    builder.addCase(syncTransactionStatus.pending, (state, action) => {
+      state.isSyncing = true;
       state.error = null;
+      state.syncReference =
+        action.meta.arg ||
+        state.pendingTransactionReference ||
+        state.transactionResult?.transactionNumber ||
+        null;
     });
+
     builder.addCase(syncTransactionStatus.fulfilled, (state, action) => {
+      state.isSyncing = false;
+      state.lastSyncAt = Date.now();
+
       if (action.payload.success) {
         state.transactionResult = action.payload.data;
         state.currentStep = "result";
-        if (action.payload.data.status !== "PENDING") {
+        if (isTerminalStatus(action.payload.data.status)) {
           state.pendingTransactionReference = null;
           state.pendingStartedAt = null;
         }
-      } else {
-        state.error = action.payload.error.message;
-        if (action.payload.error.code === "TRANSACTION_NOT_FOUND") {
-          const pendingAgeMs = state.pendingStartedAt
-            ? Date.now() - state.pendingStartedAt
-            : Number.MAX_SAFE_INTEGER;
-          const canStillRetry = pendingAgeMs < 120_000;
-          if (canStillRetry) {
-            state.currentStep = "result";
-            state.error =
-              "Estamos confirmando tu pago. Puede tardar unos segundos más.";
-            return;
-          }
-        }
-        if (!action.payload.error.retryable) {
-          state.pendingTransactionReference = null;
-          state.pendingStartedAt = null;
-          state.currentStep =
-            state.selectedProduct && state.creditCard && state.deliveryInfo
-              ? "summary"
-              : "product";
+        return;
+      }
+
+      state.error = action.payload.error.message;
+      if (action.payload.error.code === "TRANSACTION_NOT_FOUND") {
+        const pendingAgeMs = state.pendingStartedAt
+          ? Date.now() - state.pendingStartedAt
+          : Number.MAX_SAFE_INTEGER;
+        const canStillRetry = pendingAgeMs < 120_000;
+        if (canStillRetry) {
+          state.currentStep = "result";
+          state.error =
+            "Estamos confirmando tu pago. Puede tardar unos segundos más.";
+          return;
         }
       }
+
+      if (!action.payload.error.retryable) {
+        state.pendingTransactionReference = null;
+        state.pendingStartedAt = null;
+        state.currentStep =
+          state.selectedProduct && state.cardPreview && state.deliveryInfo
+            ? "summary"
+            : "product";
+      }
     });
+
     builder.addCase(syncTransactionStatus.rejected, (state) => {
+      state.isSyncing = false;
+      state.lastSyncAt = Date.now();
       state.error = "No pudimos actualizar el estado más reciente del pago.";
     });
   },
 });
 
+export const paymentReducer = paymentSlice.reducer;
+export const paymentInitialState = initialState;
+
 export const {
   setSelectedProduct,
-  setCreditCard,
+  setCardPreview,
+  setCardEntryComplete,
+  setRuntimeCard,
   setDeliveryInfo,
-  setTransactionResult,
   setPendingTransactionReference,
-  clearPendingTransactionReference,
   setCurrentStep,
   reset,
 } = paymentSlice.actions;
 
-// ── Persistence & Store Configuration ───────────────────────────────────────
+export const sanitizePaymentStateForPersistence = (
+  state: PaymentState,
+): PaymentState => ({
+  ...state,
+  sensitiveSession: { card: null },
+  cardEntryComplete: false,
+  isSyncing: false,
+  syncReference: null,
+  isLoading: false,
+  error: null,
+});
 
 const persistConfig = {
-  key: "payment-store-v3",
+  key: "payment-store-v5",
   storage,
   whitelist: [
     "selectedProduct",
     "quantity",
-    "creditCard",
+    "cardPreview",
     "deliveryInfo",
     "currentStep",
     "pendingTransactionReference",
@@ -317,7 +403,7 @@ const persistConfig = {
   ],
 };
 
-const persistedReducer = persistReducer(persistConfig, paymentSlice.reducer);
+const persistedReducer = persistReducer(persistConfig, paymentReducer);
 
 export const store = configureStore({
   reducer: {
@@ -336,11 +422,7 @@ export const persistor = persistStore(store);
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
-// ── Utilities ───────────────────────────────────────────────────────────────
-
-export const detectCardBrand = (
-  number: string,
-): "VISA" | "MASTERCARD" | "UNKNOWN" => {
+export const detectCardBrand = (number: string): CardBrand => {
   const cleaned = number.replace(/\s/g, "");
   if (/^4/.test(cleaned)) return "VISA";
   if (/^(5[1-5]|2[2-7][0-9]{2})/.test(cleaned)) return "MASTERCARD";
@@ -356,10 +438,11 @@ export const formatCardNumber = (value: string): string => {
 export const validateCardNumber = (number: string): boolean => {
   const cleaned = number.replace(/\s/g, "");
   if (cleaned.length < 13 || cleaned.length > 19) return false;
-  let sum = 0,
-    isEven = false;
+
+  let sum = 0;
+  let isEven = false;
   for (let i = cleaned.length - 1; i >= 0; i--) {
-    let digit = parseInt(cleaned.charAt(i), 10);
+    let digit = Number.parseInt(cleaned.charAt(i), 10);
     if (isEven) {
       digit *= 2;
       if (digit > 9) digit -= 9;
@@ -367,16 +450,19 @@ export const validateCardNumber = (number: string): boolean => {
     sum += digit;
     isEven = !isEven;
   }
+
   return sum % 10 === 0;
 };
 
 export const validateExpiryDate = (month: string, year: string): boolean => {
-  const m = parseInt(month, 10);
-  const y = parseInt(year, 10);
+  const m = Number.parseInt(month, 10);
+  const y = Number.parseInt(year, 10);
   if (m < 1 || m > 12) return false;
+
   const now = new Date();
   const currentY = now.getFullYear() % 100;
   const currentM = now.getMonth() + 1;
+
   return y > currentY || (y === currentY && m >= currentM);
 };
 

@@ -1,4 +1,8 @@
-import type { DeliveryInfo, CreditCard, TransactionResult } from "@/store/payment-store";
+import type {
+  DeliveryInfo,
+  RuntimeCardData,
+  TransactionResult,
+} from "@/store/payment-store";
 
 export interface ApiFailure {
   code:
@@ -6,7 +10,8 @@ export interface ApiFailure {
     | "NETWORK_DROPPED"
     | "HTTP_ERROR"
     | "INVALID_RESPONSE"
-    | "TRANSACTION_NOT_FOUND";
+    | "TRANSACTION_NOT_FOUND"
+    | "CARD_DATA_REQUIRED";
   message: string;
   retryable: boolean;
 }
@@ -19,11 +24,20 @@ interface ProcessPaymentPayload {
   reference: string;
   productId: string;
   quantity: number;
-  card: CreditCard;
+  card: RuntimeCardData;
   delivery: DeliveryInfo;
 }
 
-const mapTransaction = (transaction: any): TransactionResult => ({
+interface ApiTransactionLike {
+  id: string;
+  reference: string;
+  status: TransactionResult["status"];
+  totalAmount: number;
+  externalTransactionId?: string;
+  errorMessage?: string;
+}
+
+const mapTransaction = (transaction: ApiTransactionLike): TransactionResult => ({
   id: transaction.id,
   transactionNumber: transaction.reference,
   status: transaction.status,
