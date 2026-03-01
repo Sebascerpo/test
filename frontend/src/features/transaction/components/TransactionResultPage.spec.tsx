@@ -109,4 +109,28 @@ describe("TransactionResultPage auto redirect", () => {
 
     expect(onDismiss).not.toHaveBeenCalled();
   });
+
+  it("renders approved copy for approved status", () => {
+    const onDismiss = vi.fn();
+    renderResultPage("APPROVED", onDismiss);
+
+    expect(screen.getByText("¡Pago aprobado!")).toBeInTheDocument();
+  });
+
+  it("renders pending copy and pending action while transaction is pending", () => {
+    const onDismiss = vi.fn();
+    renderResultPage("PENDING", onDismiss);
+
+    expect(screen.getByText("Verificando pago")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Cerrar y seguir verificando/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders declined copy for declined status", () => {
+    const onDismiss = vi.fn();
+    renderResultPage("DECLINED", onDismiss);
+
+    expect(screen.getByText("Pago rechazado")).toBeInTheDocument();
+  });
 });

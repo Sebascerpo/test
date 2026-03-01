@@ -128,6 +128,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
         <ValidationToast
           message={toastMessage}
           onClear={() => setToastMessage(null)}
+          tone={isOnline ? "declined" : "pending"}
         />
 
         {/* Handle */}

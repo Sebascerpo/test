@@ -19,12 +19,7 @@ export function ResultActions({
   const shouldReduceMotion = useReducedMotion();
 
   return (
-    <motion.div
-      className="w-full max-w-sm mt-5 mx-auto"
-      initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
-    >
+    <div className="w-full max-w-sm mt-5 mx-auto">
       {!isPending && (
         <div className="text-center mb-2">
           <p className="text-xs text-muted-foreground">
@@ -52,6 +47,6 @@ export function ResultActions({
           {autoRedirectEnabled ? "Quedarme aquí" : "Reactivar redirección"}
         </motion.button>
       )}
-    </motion.div>
+    </div>
   );
 }

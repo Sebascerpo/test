@@ -6,6 +6,7 @@ import { setSelectedProduct, Product } from "@/store/payment-store";
 import {
   PackageIcon,
   ShieldCheckIcon,
+  ShoppingBagIcon,
   ZapIcon,
   TruckIcon,
   StarIcon,
@@ -197,7 +198,10 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                 className="sc-btn-primary hover:shadow-premium transition-all duration-300"
               >
                 Comprar ahora
-                <ZapIcon size={16} className="fill-current" />
+                <ShoppingBagIcon
+                  size={16}
+                  className="transition-transform duration-200 [transition-timing-function:var(--ease-snappy)] group-hover:translate-x-0.5"
+                />
               </button>
 
             </>

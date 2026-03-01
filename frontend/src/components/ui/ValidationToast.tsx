@@ -4,13 +4,28 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AlertCircleIcon } from "@/components/icons";
 import { transitions } from "@/lib/motion";
 
+export type ToastTone = "pending" | "approved" | "declined" | "neutral";
+
 interface ValidationToastProps {
   message: string | null;
   onClear: () => void;
+  tone?: ToastTone;
 }
 
-export function ValidationToast({ message, onClear }: ValidationToastProps) {
+export function ValidationToast({
+  message,
+  onClear,
+  tone = "declined",
+}: ValidationToastProps) {
   const shouldReduceMotion = useReducedMotion();
+  const toneClass =
+    tone === "approved"
+      ? "toast--approved"
+      : tone === "pending"
+        ? "toast--pending"
+        : tone === "neutral"
+          ? "toast--neutral"
+          : "toast--declined";
 
   return (
     <AnimatePresence>
@@ -32,17 +47,17 @@ export function ValidationToast({ message, onClear }: ValidationToastProps) {
           }}
           transition={transitions.enterFadeUp(!!shouldReduceMotion)}
         >
-          <div className="toast-content relative overflow-hidden">
+          <div className={`toast-content toast-tone ${toneClass} relative overflow-hidden`}>
             {/* Progress bar for auto-hide */}
             <motion.div
-              className="absolute bottom-0 left-0 h-0.5 bg-destructive/30"
+              className="toast-progress absolute bottom-0 left-0 h-0.5"
               initial={{ width: "100%" }}
               animate={{ width: 0 }}
               transition={{ duration: 4, ease: "linear" }}
             />
 
             <div className="toast-icon">
-              <AlertCircleIcon size={12} className="text-white fill-current" />
+              <AlertCircleIcon size={12} className="fill-current" />
             </div>
             <span className="toast-text">{message}</span>
           </div>

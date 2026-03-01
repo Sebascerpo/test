@@ -56,6 +56,11 @@ export function TransactionResultPage({
     effectiveTransaction?.status === "DECLINED" ||
     effectiveTransaction?.status === "ERROR" ||
     effectiveTransaction?.status === "VOIDED";
+  const statusToneClass = isApproved
+    ? "from-emerald-500/10 via-emerald-300/5 to-transparent"
+    : isDeclined
+      ? "from-red-500/10 via-red-300/5 to-transparent"
+      : "from-orange-500/10 via-orange-300/5 to-transparent";
 
   const goToCatalog = useCallback(() => {
     if (didDismissRef.current) return;
@@ -104,29 +109,36 @@ export function TransactionResultPage({
       transition={transitions.enterFadeUp(!!shouldReduceMotion)}
     >
       <motion.div
-        className={`pointer-events-none fixed inset-0 -z-10 ${
+        className={`pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b ${statusToneClass}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion)}
+      />
+      <motion.div
+        className={`pointer-events-none fixed left-1/2 top-24 -z-10 h-56 w-56 -translate-x-1/2 rounded-full blur-3xl ${
           isApproved
-            ? "bg-emerald-500/10"
+            ? "bg-emerald-400/20"
             : isDeclined
-              ? "bg-red-500/5"
-              : "bg-foreground/5"
+              ? "bg-red-400/20"
+              : "bg-orange-400/20"
         }`}
-        animate={{
-          opacity: [0.25, 0.5, 0.25],
-        }}
-        transition={
-          shouldReduceMotion
-            ? { duration: 0.2 }
-            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
-        }
+        initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.9 }}
+        animate={{ opacity: shouldReduceMotion ? 0.35 : 0.5, scale: 1 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.08)}
       />
 
-      <StatusHero status={effectiveTransaction.status} isOnline={isOnline} />
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.02)}
+      >
+        <StatusHero status={effectiveTransaction.status} isOnline={isOnline} />
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.05)}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.1)}
       >
         <TransactionDetailsCard
           transaction={effectiveTransaction}
@@ -140,7 +152,7 @@ export function TransactionResultPage({
       <motion.div
         initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.1)}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.16)}
       >
         <ResultActions
           isPending={isPending}
@@ -151,7 +163,12 @@ export function TransactionResultPage({
         />
       </motion.div>
 
-      <p className="flex items-center justify-center gap-1.5 text-[11px] mt-6 text-muted-foreground">
+      <motion.p
+        className="flex items-center justify-center gap-1.5 text-[11px] mt-6 text-muted-foreground"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.2)}
+      >
         <svg
           width="11"
           height="11"
@@ -163,7 +180,7 @@ export function TransactionResultPage({
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
         Transacción procesada de forma segura
-      </p>
+      </motion.p>
     </motion.div>
   );
 }

@@ -279,6 +279,7 @@ export function PaymentModal({
         <ValidationToast
           message={toastMessage}
           onClear={() => setToastMessage(null)}
+          tone="declined"
         />
 
         <motion.div

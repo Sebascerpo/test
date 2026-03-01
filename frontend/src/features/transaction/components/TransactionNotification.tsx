@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAppSelector } from "@/store/hooks";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   CheckIcon,
   XCircleIcon,
   AlertCircleIcon,
   XIcon,
 } from "@/components/icons";
+import { transitions } from "@/lib/motion";
 
 interface TransactionNotificationProps {
   onDismiss: () => void;
@@ -20,6 +21,7 @@ export function TransactionNotification({
   const { transactionResult, selectedProduct } = useAppSelector(
     (s) => s.payment,
   );
+  const shouldReduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(true);
 
   const isApproved = transactionResult?.status === "APPROVED";
@@ -45,26 +47,16 @@ export function TransactionNotification({
 
   if (!transactionResult) return null;
 
-  const Icon = isApproved
-    ? CheckIcon
+  const toneClass = isApproved
+    ? "toast--approved"
     : isPending
-      ? AlertCircleIcon
-      : XCircleIcon;
-  const iconBg = isApproved
-    ? "bg-foreground text-background"
+      ? "toast--pending"
+      : "toast--declined";
+  const { Icon, label } = isApproved
+    ? { Icon: CheckIcon, label: "Pago aprobado" }
     : isPending
-      ? "bg-muted text-foreground/60 border border-border"
-      : "bg-destructive/10 text-destructive border border-destructive/20";
-  const label = isApproved
-    ? "Pago aprobado"
-    : isPending
-      ? "En verificación"
-      : "Pago rechazado";
-  const labelColor = isApproved
-    ? "text-foreground"
-    : isPending
-      ? "text-muted-foreground"
-      : "text-destructive";
+      ? { Icon: AlertCircleIcon, label: "En verificación" }
+      : { Icon: XCircleIcon, label: "Pago rechazado" };
 
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("es-CO", {
@@ -77,44 +69,49 @@ export function TransactionNotification({
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -10, scale: 0.97 }}
+          initial={{
+            opacity: 0,
+            y: shouldReduceMotion ? 0 : -10,
+            scale: shouldReduceMotion ? 1 : 0.97,
+          }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -10, scale: 0.97 }}
-          transition={{ type: "spring", damping: 24, stiffness: 320 }}
+          exit={{
+            opacity: 0,
+            y: shouldReduceMotion ? 0 : -10,
+            scale: shouldReduceMotion ? 1 : 0.97,
+          }}
+          transition={transitions.enterFadeUp(!!shouldReduceMotion)}
           className="fixed top-[60px] left-3 right-3 z-[70] md:left-auto md:right-4 md:w-[360px]"
         >
-          <div className="bg-background border border-border rounded-2xl shadow-xl overflow-hidden">
+          <div className={`status-toast-card toast-tone ${toneClass}`}>
+            <div className="status-toast-accent" />
             <div className="flex items-center gap-3 px-4 py-3.5">
               {/* Icon */}
-              <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}
-              >
+              <div className="status-toast-icon w-8 h-8 rounded-xl">
                 <Icon size={14} />
               </div>
 
               {/* Text */}
               <div className="flex-1 min-w-0">
-                <p
-                  className={`text-[13px] font-semibold leading-none ${labelColor}`}
-                >
+                <p className="status-toast-label text-[13px] font-semibold leading-none">
                   {label}
                 </p>
                 {selectedProduct && (
-                  <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                  <p className="status-toast-meta text-[11px] mt-1 truncate">
                     {selectedProduct.name}
                   </p>
                 )}
               </div>
 
               {/* Amount */}
-              <p className="text-sm font-semibold flex-shrink-0">
+              <p className="status-toast-label text-sm font-semibold flex-shrink-0">
                 {formatPrice(transactionResult.amount)}
               </p>
 
               {/* Close */}
               <button
                 onClick={handleDismiss}
-                className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
+                className="w-6 h-6 rounded-full bg-white/50 hover:bg-white/70 dark:bg-black/25 dark:hover:bg-black/35 border border-white/60 dark:border-white/10 flex items-center justify-center status-toast-meta hover:text-[color:var(--toast-fg)] transition-all duration-150 [transition-timing-function:var(--ease-smooth)] flex-shrink-0"
               >
                 <XIcon size={11} />
               </button>
@@ -122,7 +119,7 @@ export function TransactionNotification({
 
             {/* Progress bar */}
             <motion.div
-              className="h-[2px] bg-foreground/15 origin-left"
+              className="status-toast-progress h-[2px] origin-left"
               initial={{ scaleX: 1 }}
               animate={{ scaleX: 0 }}
               transition={{ duration, ease: "linear" }}

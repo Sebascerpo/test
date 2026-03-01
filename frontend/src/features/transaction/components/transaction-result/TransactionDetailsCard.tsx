@@ -4,9 +4,7 @@ import {
   Product,
   TransactionResult,
 } from "@/store/payment-store";
-import { motion, useReducedMotion } from "framer-motion";
 import { PackageIcon } from "@/components/icons";
-import { transitions } from "@/lib/motion";
 
 const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
 
@@ -32,19 +30,13 @@ export function TransactionDetailsCard({
   cardPreview,
   deliveryInfo,
 }: TransactionDetailsCardProps) {
-  const shouldReduceMotion = useReducedMotion();
   const isDeclined =
     transaction.status === "DECLINED" ||
     transaction.status === "ERROR" ||
     transaction.status === "VOIDED";
 
   return (
-    <motion.div
-      className="w-full max-w-sm mt-6 mx-auto"
-      initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
-    >
+    <div className="w-full max-w-sm mt-6 mx-auto">
       <div className="rounded-2xl border border-border overflow-hidden bg-background surface-elevated shadow-premium">
         {selectedProduct && (
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
@@ -126,6 +118,6 @@ export function TransactionDetailsCard({
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

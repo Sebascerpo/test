@@ -1,5 +1,11 @@
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { transitions } from "@/lib/motion";
+import {
+  AlertCircleIcon,
+  CheckCircleIcon,
+  LoaderIcon,
+  XCircleIcon,
+} from "@/components/icons";
 
 interface StatusHeroProps {
   status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR";
@@ -7,26 +13,83 @@ interface StatusHeroProps {
 }
 
 function StatusGlyph({ status }: { status: StatusHeroProps["status"] }) {
-  if (status === "PENDING") {
-    return (
-      <div className="w-[80px] h-[80px] rounded-[24px] bg-muted border border-border flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const shouldReduceMotion = useReducedMotion();
+  const isPending = status === "PENDING";
+  const isApproved = status === "APPROVED";
+  const isDeclined =
+    status === "DECLINED" || status === "ERROR" || status === "VOIDED";
 
-  if (status === "APPROVED") {
-    return (
-      <div className="w-[80px] h-[80px] rounded-[24px] bg-emerald-500 flex items-center justify-center text-white text-3xl font-semibold">
-        ✓
-      </div>
-    );
-  }
+  const statusConfig = isApproved
+    ? {
+        shellClass:
+          "bg-emerald-500/12 border-emerald-300/60 text-emerald-700 dark:text-emerald-300",
+        Icon: CheckCircleIcon,
+      }
+    : isPending
+      ? {
+          shellClass:
+            "bg-orange-500/10 border-orange-300/55 text-orange-700 dark:text-orange-300",
+          Icon: AlertCircleIcon,
+        }
+      : {
+          shellClass:
+            "bg-red-500/10 border-red-300/55 text-red-700 dark:text-red-300",
+          Icon: XCircleIcon,
+        };
 
   return (
-    <div className="w-[80px] h-[80px] rounded-[24px] bg-red-50 border border-red-200 flex items-center justify-center text-red-500 text-3xl font-semibold">
-      ×
-    </div>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={status}
+        initial={{
+          opacity: 0,
+          scale: shouldReduceMotion ? 1 : 0.92,
+          y: shouldReduceMotion ? 0 : 10,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          ...(isDeclined && !shouldReduceMotion
+            ? { x: [0, -3, 3, -2, 2, 0] }
+            : { x: 0 }),
+        }}
+        exit={{
+          opacity: 0,
+          scale: shouldReduceMotion ? 1 : 0.96,
+          y: shouldReduceMotion ? 0 : -8,
+        }}
+        transition={{
+          ...(shouldReduceMotion
+            ? { duration: 0.15, ease: [0.2, 0, 0, 1] }
+            : { type: "spring", damping: 18, stiffness: 220, mass: 0.75 }),
+          ...(isDeclined && !shouldReduceMotion ? { duration: 0.42 } : {}),
+        }}
+      >
+        <div
+          className={`relative w-[90px] h-[90px] rounded-[26px] border flex items-center justify-center shadow-premium ${statusConfig.shellClass}`}
+        >
+          {isPending && (
+            <motion.div
+              className="absolute inset-[8px] rounded-[20px] border border-orange-300/45"
+              animate={shouldReduceMotion ? { opacity: 0.5 } : { rotate: 360 }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0.2 }
+                  : { duration: 2.8, ease: "linear", repeat: Infinity }
+              }
+            />
+          )}
+          {isPending && (
+            <LoaderIcon
+              size={22}
+              className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-background border border-border text-orange-500 shadow-sm"
+            />
+          )}
+          <statusConfig.Icon size={36} className="stroke-[2.25]" />
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -50,89 +113,41 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
         </motion.div>
       )}
 
-      {/* Radar rings for pending */}
       <AnimatePresence>
         {isPending && (
           <motion.div
-            className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none"
+            className="absolute top-[2px] left-1/2 -translate-x-1/2 pointer-events-none w-[94px] h-[94px] rounded-[28px] border border-orange-400/20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-          >
-            {[0, 1, 2].map((idx) => (
-              <motion.div
-                key={idx}
-                className="absolute rounded-full border border-foreground/15"
-                initial={{
-                  width: 80,
-                  height: 80,
-                  x: -40,
-                  y: -40,
-                  opacity: 0.5,
-                }}
-                animate={{
-                  width: 200,
-                  height: 200,
-                  x: -100,
-                  y: -100,
-                  opacity: 0,
-                }}
-                transition={{
-                  duration: shouldReduceMotion ? 0.15 : 2,
-                  delay: idx * 0.45,
-                  repeat: shouldReduceMotion ? 0 : Infinity,
-                  ease: [0.2, 0, 0, 1],
-                }}
-              />
-            ))}
-          </motion.div>
+            transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.05)}
+          />
         )}
       </AnimatePresence>
 
-      {/* Success glow */}
       <AnimatePresence>
         {isApproved && (
           <motion.div
-            className="absolute top-9 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full bg-emerald-500/20 blur-2xl pointer-events-none"
+            className="absolute top-4 left-1/2 -translate-x-1/2 w-[106px] h-[106px] rounded-[30px] bg-emerald-500/20 blur-2xl pointer-events-none"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={
               shouldReduceMotion
                 ? { opacity: 0.5, scale: 1 }
-                : { opacity: [0.3, 0.9, 0.4], scale: [0.9, 1.12, 0.96] }
+                : { opacity: [0.38, 0.58, 0.38], scale: [0.98, 1.04, 0.98] }
             }
             exit={{ opacity: 0 }}
             transition={{
-              duration: shouldReduceMotion ? 0.15 : 2.2,
+              duration: shouldReduceMotion ? 0.15 : 2.8,
               repeat: shouldReduceMotion ? 0 : Infinity,
               ease: [0.2, 0, 0, 1],
             }}
           />
         )}
       </AnimatePresence>
-
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={
-          isDeclined && !shouldReduceMotion
-            ? {
-                scale: 1,
-                opacity: 1,
-                x: [0, -3, 3, -2, 2, 0],
-              }
-            : { scale: 1, opacity: 1, x: 0 }
-        }
-        transition={{
-          ...(shouldReduceMotion
-            ? { duration: 0.15, ease: [0.2, 0, 0, 1] }
-            : { type: "spring", damping: 16, stiffness: 220 }),
-          ...(isDeclined && !shouldReduceMotion ? { duration: 0.45 } : {}),
-        }}
-      >
-        <StatusGlyph status={status} />
-      </motion.div>
+      <StatusGlyph status={status} />
 
       <motion.h1
-        className="text-[27px] font-semibold tracking-tight leading-tight text-foreground text-center mt-5"
+        className="text-[28px] font-semibold tracking-[-0.025em] leading-tight text-foreground text-center mt-5"
         initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.04)}
@@ -145,7 +160,7 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
       </motion.h1>
 
       <motion.p
-        className="text-sm mt-2 max-w-[280px] text-center text-muted-foreground leading-relaxed"
+        className="text-sm mt-2 max-w-[295px] text-center text-muted-foreground leading-relaxed"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.07)}
