@@ -20,11 +20,13 @@ import {
 } from "@/components/icons";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Fees configuration
+// Fees configuration from env
 const FEES = {
-  baseFee: 2500,
-  deliveryFee: 5000,
+  baseFee: Number(import.meta.env.VITE_BASE_FEE || 2500),
+  deliveryFee: Number(import.meta.env.VITE_DELIVERY_FEE || 5000),
 };
+
+const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
 
 interface BackdropSummaryProps {
   onBack: () => void;
@@ -41,7 +43,7 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
-      currency: "COP",
+      currency: APP_CURRENCY,
       minimumFractionDigits: 0,
     }).format(price);
   };

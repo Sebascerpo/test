@@ -16,10 +16,18 @@ import {
   ProcessPaymentInput,
   ProcessPaymentResult,
 } from '../../application/use-cases/process-payment.use-case';
+import {
+  createSyncTransactionStatusUseCase,
+  SyncTransactionStatusUseCase,
+  SyncTransactionStatusResult,
+} from '../../application/use-cases/sync-transaction-status.use-case';
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
 import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
 import { CustomerRepositoryPort } from '../../../customers/application/ports/customer.repository.port';
-import { PaymentGatewayPort } from '../../../payment/application/ports/payment-gateway.port';
+import {
+  PaymentGatewayPort,
+  PaymentConfig,
+} from '../../../payment/application/ports/payment-gateway.port';
 import {
   ProcessPaymentDto,
   TransactionResponseDto,
@@ -29,6 +37,7 @@ import { match } from '../../../../shared/common/rop';
 @Controller('api')
 export class TransactionsController {
   private readonly processPaymentUseCase: ProcessPaymentUseCase;
+  private readonly syncTransactionStatusUseCase: SyncTransactionStatusUseCase;
 
   constructor(
     @Inject(TransactionRepositoryPort)
@@ -39,12 +48,19 @@ export class TransactionsController {
     customerRepository: CustomerRepositoryPort,
     @Inject(PaymentGatewayPort)
     paymentGateway: PaymentGatewayPort,
+    private readonly paymentConfig: PaymentConfig,
     private readonly dataSource: DataSource,
   ) {
     this.processPaymentUseCase = createProcessPaymentUseCase(
       transactionRepository,
       productRepository,
       customerRepository,
+      paymentGateway,
+      paymentConfig,
+      dataSource,
+    );
+    this.syncTransactionStatusUseCase = createSyncTransactionStatusUseCase(
+      transactionRepository,
       paymentGateway,
       dataSource,
     );
@@ -126,5 +142,24 @@ export class TransactionsController {
       throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
     }
     return { success: true, data: transaction };
+  }
+
+  @Get('transactions/reference/:reference/sync')
+  async syncByReference(@Param('reference') reference: string) {
+    const result = await this.syncTransactionStatusUseCase(reference);
+
+    return match<SyncTransactionStatusResult, Error, any>(
+      (data) => ({
+        success: true,
+        transaction: data.transaction,
+        updated: data.updated,
+      }),
+      (error) => {
+        throw new HttpException(
+          { success: false, message: error.message },
+          HttpStatus.BAD_REQUEST,
+        );
+      },
+    )(result);
   }
 }

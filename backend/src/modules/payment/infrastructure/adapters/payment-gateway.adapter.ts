@@ -1,5 +1,7 @@
-// Infrastructure Adapter - Payment Gateway (Sandbox)
+// Infrastructure Adapter - Payment Gateway (Wompi Sandbox)
 import { Injectable } from '@nestjs/common';
+import axios, { AxiosInstance } from 'axios';
+import * as crypto from 'crypto';
 import {
   PaymentGatewayPort,
   CardTokenizationInput,
@@ -12,36 +14,60 @@ import {
 } from '../../application/ports/payment-gateway.port';
 import { ResultAsync, ok, err } from '../../../../shared/common/rop';
 
-// External Provider Sandbox Configuration
-const EXTERNAL_PROVIDER_CONFIG: PaymentConfig = {
-  publicKey: 'pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7',
-  privateKey: 'prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg',
-  baseUrl: 'https://api-sandbox.co.uat.wompi.dev/v1',
-  integrityKey: 'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp',
-};
-
 @Injectable()
 export class PaymentGatewayAdapter implements PaymentGatewayPort {
-  private config: PaymentConfig;
+  private api: AxiosInstance;
 
-  constructor(config: PaymentConfig = EXTERNAL_PROVIDER_CONFIG) {
-    this.config = config;
+  constructor(private readonly config: PaymentConfig) {
+    this.api = axios.create({
+      baseURL: this.config.baseUrl,
+    });
+  }
+
+  private getPublicHeaders() {
+    return {
+      Authorization: `Bearer ${this.config.publicKey}`,
+    };
+  }
+
+  private getPrivateHeaders() {
+    return {
+      Authorization: `Bearer ${this.config.privateKey}`,
+    };
   }
 
   async tokenizeCard(
     input: CardTokenizationInput,
   ): ResultAsync<CardTokenizationResult> {
     try {
-      console.log('[EXTERNAL_PROVIDER] Tokenizing card...');
-      // Simulation: Return a mock token
+      console.log('[PAYMENT_GATEWAY] Tokenizing card (Public Key)...');
+      const response = await this.api.post(
+        '/tokens/cards',
+        {
+          number: input.number,
+          cvc: input.cvc,
+          exp_month: input.exp_month,
+          exp_year: input.exp_year,
+          card_holder: input.card_holder,
+        },
+        { headers: this.getPublicHeaders() },
+      );
+
       return ok({
-        token: `tok_test_${Math.random().toString(36).substring(7)}`,
+        token: response.data.data.id,
         last_four: input.number.slice(-4),
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error(
+        '[PAYMENT_GATEWAY] Tokenization Error Payload:',
+        JSON.stringify(error.response?.data, null, 2),
+      );
+      console.error('[PAYMENT_GATEWAY] Full Error Object:', error.message);
       return err(
         new Error(
-          `Tokenization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error.response?.data?.error?.reason ||
+            error.response?.data?.error?.type ||
+            'Tokenization failed',
         ),
       );
     }
@@ -51,14 +77,31 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
     input: PaymentSourceInput,
   ): ResultAsync<PaymentSourceResult> {
     try {
-      console.log('[EXTERNAL_PROVIDER] Creating payment source...');
+      console.log('[PAYMENT_GATEWAY] Creating payment source (Private Key)...');
+      const response = await this.api.post(
+        '/payment_sources',
+        {
+          type: input.type,
+          token: input.token,
+          customer_email: input.customer_email,
+          acceptance_token: input.acceptance_token,
+        },
+        { headers: this.getPrivateHeaders() },
+      );
+
       return ok({
-        id: `src_test_${Math.random().toString(36).substring(7)}`,
+        id: response.data.data.id.toString(),
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error(
+        '[PAYMENT_GATEWAY] Payment Source Error Payload:',
+        JSON.stringify(error.response?.data, null, 2),
+      );
       return err(
         new Error(
-          `Failed to create payment source: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error.response?.data?.error?.reason ||
+            error.response?.data?.error?.type ||
+            'Failed to create payment source',
         ),
       );
     }
@@ -68,28 +111,41 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
     input: TransactionInput,
   ): ResultAsync<TransactionResult> {
     try {
-      console.log('[EXTERNAL_PROVIDER] Creating transaction...', {
+      console.log('[PAYMENT_GATEWAY] Creating transaction (Private Key)...', {
         reference: input.reference,
       });
 
-      // Simulation: Random status (mostly APPROVED)
-      const statuses: ('APPROVED' | 'DECLINED' | 'ERROR')[] = [
-        'APPROVED',
-        'APPROVED',
-        'APPROVED',
-        'DECLINED',
-      ];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const response = await this.api.post(
+        '/transactions',
+        {
+          amount_in_cents: input.amount_in_cents,
+          currency: input.currency,
+          customer_email: input.customer_email,
+          payment_source_id: parseInt(input.payment_source_id, 10),
+          reference: input.reference,
+          signature: input.signature,
+          payment_method: {
+            installments: input.installments,
+          },
+        },
+        { headers: this.getPrivateHeaders() },
+      );
 
       return ok({
-        id: `tr_test_${Math.random().toString(36).substring(7)}`,
-        status: status,
-        reference: input.reference,
+        id: response.data.data.id,
+        status: response.data.data.status,
+        reference: response.data.data.reference,
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error(
+        '[PAYMENT_GATEWAY] Transaction Error Payload:',
+        JSON.stringify(error.response?.data, null, 2),
+      );
       return err(
         new Error(
-          `Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error.response?.data?.error?.reason ||
+            error.response?.data?.error?.type ||
+            'Transaction failed',
         ),
       );
     }
@@ -97,16 +153,19 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
 
   async getTransactionStatus(id: string): ResultAsync<TransactionResult> {
     try {
-      console.log('[EXTERNAL_PROVIDER] Fetching transaction status...', { id });
-      return ok({
-        id,
-        status: 'APPROVED',
-        reference: `ref_${Math.random().toString(36).substring(7)}`,
+      console.log('[PAYMENT_GATEWAY] Fetching status (Private Key)...', { id });
+      const response = await this.api.get(`/transactions/${id}`, {
+        headers: this.getPrivateHeaders(),
       });
-    } catch (error) {
+      return ok({
+        id: response.data.data.id,
+        status: response.data.data.status,
+        reference: response.data.data.reference,
+      });
+    } catch (error: any) {
       return err(
         new Error(
-          `Failed to fetch status: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error.response?.data?.error?.reason || 'Failed to fetch status',
         ),
       );
     }
@@ -114,14 +173,27 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
 
   async getAcceptanceToken(): ResultAsync<string> {
     try {
-      console.log('[EXTERNAL_PROVIDER] Fetching acceptance token...');
-      return ok('test_acceptance_token');
-    } catch (error) {
-      return err(
-        new Error(
-          `Failed to fetch acceptance token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ),
+      console.log(
+        '[PAYMENT_GATEWAY] Fetching acceptance token (Public Key)...',
       );
+      const response = await this.api.get(
+        `/merchants/${this.config.publicKey}`,
+        { headers: this.getPublicHeaders() },
+      );
+      const acceptanceToken =
+        response.data.data.presigned_acceptance.acceptance_token;
+      return ok(acceptanceToken);
+    } catch (error: any) {
+      console.error(
+        '[PAYMENT_GATEWAY] Acceptance Token Error:',
+        error.response?.data || error.message,
+      );
+      return err(new Error('Failed to fetch acceptance token'));
     }
+  }
+
+  generateSignature(reference: string, amountInCents: number): string {
+    const rawSignature = `${reference}${amountInCents}${this.config.currency}${this.config.integrityKey}`;
+    return crypto.createHash('sha256').update(rawSignature).digest('hex');
   }
 }

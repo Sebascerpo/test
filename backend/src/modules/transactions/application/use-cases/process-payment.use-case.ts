@@ -3,6 +3,7 @@ import { ResultAsync, ok, err } from '../../../../shared/common/rop';
 import {
   Transaction,
   TransactionStatus,
+  PaymentMethod,
 } from '../../domain/transaction.entity';
 import { TransactionRepositoryPort } from '../ports/transaction.repository.port';
 import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
@@ -10,13 +11,24 @@ import { CustomerRepositoryPort } from '../../../customers/application/ports/cus
 import {
   PaymentGatewayPort,
   CardTokenizationInput,
+  PaymentConfig,
 } from '../../../payment/application/ports/payment-gateway.port';
-import { DeliveryInfo } from '../../../customers/domain/customer.entity';
+import { DataSource } from 'typeorm';
+import { ProductOrmEntity } from '../../../products/infrastructure/adapters/product.orm-entity';
+import { CustomerOrmEntity } from '../../../customers/infrastructure/adapters/customer.orm-entity';
+import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
 
 export interface ProcessPaymentInput {
   productId: string;
   quantity: number;
-  deliveryInfo: DeliveryInfo;
+  deliveryInfo: {
+    fullName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    postalCode: string;
+  };
   cardInfo: CardTokenizationInput;
 }
 
@@ -30,33 +42,34 @@ export type ProcessPaymentUseCase = (
 ) => ResultAsync<ProcessPaymentResult>;
 
 // Helper to calculate fees
-const calculateFees = (amount: number, quantity: number) => {
+const calculateFees = (
+  amount: number,
+  quantity: number,
+  baseFee: number,
+  deliveryFee: number,
+) => {
   const baseAmount = amount * quantity;
-  const baseFee = 2500; // COP $2,500 base fee
-  const deliveryFee = 5000; // COP $5,000 delivery fee
   const totalAmount = baseAmount + baseFee + deliveryFee;
   return { baseAmount, baseFee, deliveryFee, totalAmount };
 };
-
-import { DataSource } from 'typeorm';
-import { ProductOrmEntity } from '../../../products/infrastructure/adapters/product.orm-entity';
-import { CustomerOrmEntity } from '../../../customers/infrastructure/adapters/customer.orm-entity';
-import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
 
 export const createProcessPaymentUseCase = (
   transactionRepository: TransactionRepositoryPort,
   productRepository: ProductRepositoryPort,
   customerRepository: CustomerRepositoryPort,
   paymentGateway: PaymentGatewayPort,
+  paymentConfig: PaymentConfig,
   dataSource: DataSource,
 ): ProcessPaymentUseCase => {
-  return async (input: ProcessPaymentInput) => {
+  return async (
+    input: ProcessPaymentInput,
+  ): ResultAsync<ProcessPaymentResult> => {
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Step 1: Validate product availability with pessimistic locking
+      // Step 1: Validate product availability
       const productEntity = await queryRunner.manager.findOne(
         ProductOrmEntity,
         {
@@ -75,7 +88,12 @@ export const createProcessPaymentUseCase = (
         return err(new Error('Insufficient stock'));
       }
 
-      const fees = calculateFees(productEntity.price, input.quantity);
+      const fees = calculateFees(
+        productEntity.price,
+        input.quantity,
+        paymentConfig.baseFee,
+        paymentConfig.deliveryFee,
+      );
 
       // Step 2: Create or get customer
       let customerEntity = await queryRunner.manager.findOne(
@@ -112,6 +130,7 @@ export const createProcessPaymentUseCase = (
         totalAmount: fees.totalAmount,
         quantity: input.quantity,
         status: TransactionStatus.PENDING,
+        paymentMethod: PaymentMethod.CREDIT_CARD,
       });
 
       transactionEntity = await queryRunner.manager.save(transactionEntity);
@@ -129,11 +148,24 @@ export const createProcessPaymentUseCase = (
       }
 
       // Step 5: Create payment source
+      const acceptanceTokenResult = await paymentGateway.getAcceptanceToken();
+      if (!acceptanceTokenResult.success) {
+        transactionEntity.status = TransactionStatus.ERROR;
+        transactionEntity.errorMessage = acceptanceTokenResult.error.message;
+        await queryRunner.manager.save(transactionEntity);
+        await queryRunner.commitTransaction();
+        return err(
+          new Error(
+            `Failed to get acceptance token: ${acceptanceTokenResult.error.message}`,
+          ),
+        );
+      }
+
       const paymentSourceResult = await paymentGateway.createPaymentSource({
         type: 'CARD',
         token: tokenResult.value.token,
         customer_email: customerEntity.email,
-        acceptance_token: 'test_token',
+        acceptance_token: acceptanceTokenResult.value,
       });
 
       if (!paymentSourceResult.success) {
@@ -149,23 +181,32 @@ export const createProcessPaymentUseCase = (
       }
 
       // Step 6: Create External transaction
+      const amountInCents = fees.totalAmount * 100;
+      const signature = paymentGateway.generateSignature(
+        transactionEntity.reference,
+        amountInCents,
+      );
+
       const externalTransactionResult = await paymentGateway.createTransaction({
-        amount_in_cents: fees.totalAmount,
-        currency: 'COP',
+        amount_in_cents: amountInCents,
+        currency: paymentConfig.currency,
         customer_email: customerEntity.email,
         payment_source_id: paymentSourceResult.value.id,
         reference: transactionEntity.reference,
-        signature: 'test_signature',
+        signature: signature,
+        installments: 1,
       });
 
       // Step 7: Final Status Update
       const finalStatus = !externalTransactionResult.success
         ? TransactionStatus.ERROR
-        : externalTransactionResult.value.status === 'APPROVED'
+        : (externalTransactionResult.value.status as any) === 'APPROVED'
           ? TransactionStatus.APPROVED
-          : externalTransactionResult.value.status === 'DECLINED'
+          : (externalTransactionResult.value.status as any) === 'DECLINED'
             ? TransactionStatus.DECLINED
-            : TransactionStatus.ERROR;
+            : (externalTransactionResult.value.status as any) === 'PENDING'
+              ? TransactionStatus.PENDING
+              : TransactionStatus.ERROR;
 
       transactionEntity.status = finalStatus;
       if (externalTransactionResult.success) {
@@ -187,7 +228,7 @@ export const createProcessPaymentUseCase = (
       await queryRunner.manager.save(transactionEntity);
       await queryRunner.commitTransaction();
 
-      // Map back to domain for response
+      // Map back to domain
       const resultTransaction: Transaction = {
         id: transactionEntity.id,
         reference: transactionEntity.reference,
@@ -214,12 +255,10 @@ export const createProcessPaymentUseCase = (
             ? 'Payment successful!'
             : 'Payment processed',
       });
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
       return err(
-        new Error(
-          `Payment process failed: ${error instanceof Error ? error.message : 'Unknown'}`,
-        ),
+        new Error(`Payment process failed: ${error?.message || 'Unknown'}`),
       );
     } finally {
       await queryRunner.release();

@@ -32,6 +32,7 @@ export interface TransactionInput {
   payment_source_id: string;
   reference: string;
   signature: string;
+  installments: number;
 }
 
 export interface TransactionResult {
@@ -52,6 +53,7 @@ export abstract class PaymentGatewayPort {
   ): ResultAsync<TransactionResult>;
   abstract getTransactionStatus(id: string): ResultAsync<TransactionResult>;
   abstract getAcceptanceToken(): ResultAsync<string>;
+  abstract generateSignature(reference: string, amountInCents: number): string;
 }
 
 // Payment Gateway Configuration
@@ -60,4 +62,7 @@ export class PaymentConfig {
   privateKey: string;
   baseUrl: string;
   integrityKey: string;
+  currency: string;
+  baseFee: number;
+  deliveryFee: number;
 }
