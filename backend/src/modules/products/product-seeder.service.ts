@@ -11,9 +11,6 @@ export class ProductSeederService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    const count = await this.productRepository.count();
-    if (count > 0) return;
-
     const products = [
       {
         name: 'Wireless Headphones',
@@ -21,7 +18,8 @@ export class ProductSeederService implements OnApplicationBootstrap {
           'Premium wireless headphones with active noise cancellation and 30-hour battery life.',
         price: 149990,
         stock: 15,
-        imageUrl: '/products/headphones.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1505740487311-c1b9204cd153?q=80&w=1000&auto=format&fit=crop',
         category: 'Electronics',
       },
       {
@@ -30,7 +28,8 @@ export class ProductSeederService implements OnApplicationBootstrap {
           'Advanced smartwatch with health monitoring, GPS, and 7-day battery life.',
         price: 299990,
         stock: 8,
-        imageUrl: '/products/smartwatch.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1523275335660-02244a2936f4?q=80&w=1000&auto=format&fit=crop',
         category: 'Electronics',
       },
       {
@@ -39,7 +38,8 @@ export class ProductSeederService implements OnApplicationBootstrap {
           'RGB mechanical keyboard with Cherry MX switches and programmable keys.',
         price: 179990,
         stock: 12,
-        imageUrl: '/products/keyboard.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?q=80&w=1000&auto=format&fit=crop',
         category: 'Accessories',
       },
       {
@@ -48,7 +48,8 @@ export class ProductSeederService implements OnApplicationBootstrap {
           'Ergonomic wireless mouse with adjustable DPI and silent clicks.',
         price: 79990,
         stock: 25,
-        imageUrl: '/products/mouse.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1527866959252-deab85ef7d1b?q=80&w=1000&auto=format&fit=crop',
         category: 'Accessories',
       },
       {
@@ -57,12 +58,33 @@ export class ProductSeederService implements OnApplicationBootstrap {
           'Universal fast charger compatible with laptops, phones, and tablets.',
         price: 59990,
         stock: 30,
-        imageUrl: '/products/charger.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1612815154858-60aa4c59ebe1?q=80&w=1000&auto=format&fit=crop',
         category: 'Accessories',
       },
     ];
 
-    await this.productRepository.save(products);
-    console.log('Database seeded with dummy products.');
+    const currentCount = await this.productRepository.count();
+
+    if (currentCount === 0) {
+      await this.productRepository.save(products);
+      console.log('Database seeded with products and real images.');
+    } else {
+      // Repair logic: Update existing products if they use the old placeholder paths
+      for (const productData of products) {
+        const existing = await this.productRepository.findOne({
+          where: { name: productData.name },
+        });
+
+        if (
+          existing &&
+          (existing.imageUrl.startsWith('/products/') || !existing.imageUrl)
+        ) {
+          existing.imageUrl = productData.imageUrl;
+          await this.productRepository.save(existing);
+          console.log(`Updated image for product: ${productData.name}`);
+        }
+      }
+    }
   }
 }

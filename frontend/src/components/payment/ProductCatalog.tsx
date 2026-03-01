@@ -3,333 +3,288 @@
 import { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setSelectedProduct, Product } from "@/store/payment-store";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { PackageIcon, CreditCardIcon, ZapIcon } from "@/components/icons";
-import { motion } from "framer-motion";
+  PackageIcon,
+  ShieldCheckIcon,
+  ZapIcon,
+  TruckIcon,
+  StarIcon,
+} from "@/components/icons";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ProductCatalogProps {
   onSelectProduct?: () => void;
 }
 
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+  }).format(price);
+
+function StockBar({ stock }: { stock: number }) {
+  if (stock <= 0)
+    return (
+      <span className="text-[11px] font-medium text-destructive">Agotado</span>
+    );
+  if (stock <= 5)
+    return (
+      <div className="flex items-center gap-1.5">
+        <div className="flex gap-0.5">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full ${i < stock ? "bg-orange-400" : "bg-border"}`}
+            />
+          ))}
+        </div>
+        <span className="text-[11px] font-medium text-orange-500">
+          ¡Solo {stock}!
+        </span>
+      </div>
+    );
+  return (
+    <span className="text-[11px] font-medium text-emerald-600">Disponible</span>
+  );
+}
+
+function ProductSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+      <div className="aspect-[4/3] bg-muted" />
+      <div className="p-4 space-y-3">
+        <div className="h-4 bg-muted rounded w-3/4" />
+        <div className="h-3 bg-muted rounded w-full" />
+        <div className="h-3 bg-muted rounded w-2/3" />
+        <div className="h-6 bg-muted rounded w-1/3 mt-2" />
+        <div className="h-10 bg-muted rounded-xl mt-3" />
+      </div>
+    </div>
+  );
+}
+
 export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
   const dispatch = useAppDispatch();
-  const { selectedProduct, transactionResult } = useAppSelector(
-    (state) => state.payment,
+  const { transactionResult, selectedProduct } = useAppSelector(
+    (s) => s.payment,
   );
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get updated stock from transaction result
-  const updatedStock =
-    transactionResult?.status === "APPROVED" && selectedProduct
-      ? { productId: selectedProduct.id, newStock: selectedProduct.stock - 1 }
-      : null;
+  const fetchProducts = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/api/products");
+      const data = await response.json();
+      setProducts(data.data || data.products || []);
+    } catch {
+      setError("No se pudieron cargar los productos");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        // API is proxied through Next.js to NestJS backend
-        const response = await fetch("/api/products");
-        const data = await response.json();
-        setProducts(data.data || data.products || []);
-      } catch (err) {
-        setError("Error al cargar los productos");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
   }, []);
 
-  // Refresh products after successful transaction
   useEffect(() => {
-    if (transactionResult?.status === "APPROVED") {
-      const refreshProducts = async () => {
-        try {
-          const response = await fetch("/api/products");
-          const data = await response.json();
-          setProducts(data.data || data.products || []);
-        } catch (err) {
-          console.error("Error refreshing products:", err);
-        }
-      };
-      refreshProducts();
-    }
+    if (transactionResult?.status === "APPROVED") fetchProducts();
   }, [transactionResult?.status]);
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelect = (product: Product) => {
     if (product.stock <= 0) return;
     dispatch(setSelectedProduct({ product, quantity: 1 }));
-    if (onSelectProduct) {
-      onSelectProduct();
-    }
+    onSelectProduct?.();
   };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  // Get stock status
-  const getStockStatus = (stock: number) => {
-    if (stock <= 0)
-      return { label: "Agotado", color: "destructive", progress: 0 };
-    if (stock <= 5)
-      return {
-        label: `¡Solo ${stock}!`,
-        color: "warning",
-        progress: Math.min((stock / 30) * 100, 100),
-      };
-    if (stock <= 10)
-      return {
-        label: "Pocas unidades",
-        color: "low",
-        progress: Math.min((stock / 30) * 100, 100),
-      };
-    return { label: "Disponible", color: "success", progress: 100 };
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-muted-foreground text-sm">Cargando productos...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <p className="text-destructive">{error}</p>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => window.location.reload()}
-          >
-            Reintentar
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1">
-            Nuestros Productos
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Encuentra los mejores productos de tecnología
-          </p>
-        </motion.div>
-      </div>
-
-      {/* Info Banner */}
+    <div className="w-full max-w-6xl mx-auto px-4 py-8">
+      {/* ── Page header ──────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="mb-6"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="mb-8"
       >
-        <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-transparent rounded-lg p-3 border border-primary/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <ZapIcon size={16} className="text-primary" />
-            </div>
-            <p className="text-sm">
-              <span className="font-medium">Envío gratis</span>
-              <span className="text-muted-foreground">
-                {" "}
-                en compras mayores a $300.000
-              </span>
+        <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
+          Catálogo
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
+              Nuestros Productos
+            </h1>
+            <p className="text-muted-foreground text-sm mt-2">
+              Tecnología de calidad con envío rápido a todo el país
             </p>
+          </div>
+          {/* Free shipping banner */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-border bg-muted/40 text-sm whitespace-nowrap self-start sm:self-auto">
+            <TruckIcon size={14} className="text-foreground/60" />
+            <span className="text-foreground/70 font-medium text-xs">
+              Envío gratis desde $300.000
+            </span>
           </div>
         </div>
       </motion.div>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {products.map((product, index) => {
-          const stockStatus = getStockStatus(product.stock);
-
-          return (
-            <motion.div
-              key={product.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-            >
-              <Card
-                className={`overflow-hidden transition-all duration-200 group ${
-                  product.stock <= 0
-                    ? "opacity-50 grayscale"
-                    : "hover:shadow-lg hover:border-primary/30 cursor-pointer active:scale-[0.98]"
-                }`}
-                onClick={() => handleSelectProduct(product)}
-              >
-                {/* Image Container - Fixed aspect ratio with overflow hidden */}
-                <div className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <PackageIcon
-                        size={48}
-                        className="text-slate-300 dark:text-slate-600"
-                      />
-                    </div>
-                  )}
-
-                  {/* Out of stock overlay */}
-                  {product.stock <= 0 && (
-                    <div className="absolute inset-0 bg-background/70 backdrop-blur-[1px] flex items-center justify-center">
-                      <Badge variant="destructive" className="text-xs">
-                        Agotado
-                      </Badge>
-                    </div>
-                  )}
-
-                  {/* Low stock badge */}
-                  {product.stock > 0 && product.stock <= 5 && (
-                    <Badge
-                      variant="secondary"
-                      className="absolute top-2 right-2 bg-amber-500 text-white border-0 text-[10px] px-2"
-                    >
-                      ¡Últimas {product.stock}!
-                    </Badge>
-                  )}
-                </div>
-
-                <CardHeader className="pb-1 px-4 pt-3">
-                  <CardTitle className="text-base line-clamp-1">
-                    {product.name}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2 text-xs">
-                    {product.description}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="pb-2 px-4">
-                  <div className="flex items-end justify-between mb-2">
-                    <div>
-                      <p className="text-xl font-bold text-primary">
-                        {formatPrice(product.price)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Stock Progress */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-muted-foreground">Stock</span>
-                      <span
-                        className={`font-medium ${
-                          product.stock <= 5 && product.stock > 0
-                            ? "text-amber-600"
-                            : product.stock <= 0
-                              ? "text-destructive"
-                              : "text-green-600"
-                        }`}
-                      >
-                        {stockStatus.label}
-                      </span>
-                    </div>
-                    <Progress
-                      value={stockStatus.progress}
-                      className={`h-1 ${
-                        product.stock <= 5 && product.stock > 0
-                          ? "[&>div]:bg-amber-500"
-                          : product.stock <= 0
-                            ? "[&>div]:bg-destructive"
-                            : "[&>div]:bg-green-500"
-                      }`}
-                    />
-                  </div>
-                </CardContent>
-
-                <CardFooter className="pt-0 px-4 pb-3">
-                  <Button
-                    className="w-full text-sm h-9"
-                    disabled={product.stock <= 0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectProduct(product);
-                    }}
-                  >
-                    <CreditCardIcon size={14} className="mr-1.5" />
-                    Pagar con Tarjeta
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Trust Badges */}
+      {/* ── Trust strip ──────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-        className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3"
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8"
       >
         {[
-          { icon: "", title: "Pago Seguro", desc: "SSL 256-bit" },
-          { icon: "", title: "Envío Rápido", desc: "24-48 horas" },
-          { icon: "", title: "Garantía", desc: "12 meses" },
-          { icon: "", title: "Cuotas", desc: "Sin interés" },
-        ].map((badge, index) => (
+          { icon: ShieldCheckIcon, label: "Pago seguro", sub: "SSL 256-bit" },
+          { icon: TruckIcon, label: "Envío rápido", sub: "24–48 horas" },
+          { icon: StarIcon, label: "Garantía", sub: "12 meses" },
+          { icon: ZapIcon, label: "Cuotas", sub: "Sin interés" },
+        ].map(({ icon: Icon, label, sub }, i) => (
           <div
-            key={index}
-            className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border"
+            key={i}
+            className="flex items-center gap-2.5 p-3 rounded-xl border border-border bg-background"
           >
-            <span className="text-lg">{badge.icon}</span>
+            <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+              <Icon size={14} className="text-foreground/60" />
+            </div>
             <div>
-              <p className="font-medium text-xs">{badge.title}</p>
-              <p className="text-[10px] text-muted-foreground">{badge.desc}</p>
+              <p className="text-xs font-semibold leading-none">{label}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
             </div>
           </div>
         ))}
       </motion.div>
 
-      {/* Footer */}
-      <div className="mt-8 text-center text-xs text-muted-foreground">
-        <p className="flex items-center justify-center gap-1.5">
-          <span className="text-base"></span>
-          Pagos seguros procesados
-        </p>
-      </div>
+      {/* ── Products grid ────────────────────────────────────── */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[...Array(3)].map((_, i) => (
+            <ProductSkeleton key={i} />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+            <PackageIcon size={22} className="text-destructive" />
+          </div>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <button
+            onClick={fetchProducts}
+            className="text-sm font-medium underline underline-offset-4 hover:text-foreground text-muted-foreground transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <AnimatePresence>
+            {products.map((product, index) => (
+              <motion.div
+                key={product.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.06 }}
+              >
+                <article
+                  className={`product-card group relative rounded-2xl border border-border bg-card overflow-hidden flex flex-col ${
+                    product.stock <= 0
+                      ? "opacity-55 grayscale cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
+                  onClick={() => handleSelect(product)}
+                >
+                  {/* Image */}
+                  <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <PackageIcon
+                          size={40}
+                          className="text-muted-foreground/30"
+                        />
+                      </div>
+                    )}
+
+                    {/* Sold-out overlay */}
+                    {product.stock <= 0 && (
+                      <div className="absolute inset-0 bg-background/75 backdrop-blur-[2px] flex items-center justify-center">
+                        <span className="text-xs font-semibold text-foreground/60 border border-border rounded-full px-3 py-1">
+                          Agotado
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Low stock chip */}
+                    {product.stock > 0 && product.stock <= 5 && (
+                      <div className="absolute top-2.5 right-2.5 bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                        ¡Últimas {product.stock}!
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex flex-col flex-1 p-4">
+                    <h2 className="font-semibold text-[15px] leading-snug tracking-tight line-clamp-1 mb-1">
+                      {product.name}
+                    </h2>
+                    <p className="text-muted-foreground text-xs leading-relaxed line-clamp-2 flex-1">
+                      {product.description}
+                    </p>
+
+                    {/* Price + stock */}
+                    <div className="flex items-end justify-between mt-3 mb-4">
+                      <div>
+                        <p className="text-2xl font-semibold tracking-tight leading-none">
+                          {formatPrice(product.price)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          COP · precio unitario
+                        </p>
+                      </div>
+                      <StockBar stock={product.stock} />
+                    </div>
+
+                    {/* CTA */}
+                    <button
+                      disabled={product.stock <= 0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(product);
+                      }}
+                      className="w-full h-11 rounded-xl bg-foreground text-background text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Comprar ahora
+                    </button>
+                  </div>
+                </article>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* ── Footer note ──────────────────────────────────────── */}
+      {!loading && !error && products.length > 0 && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="text-center text-[11px] text-muted-foreground mt-10 flex items-center justify-center gap-1.5"
+        >
+          <ShieldCheckIcon size={11} />
+          Pagos procesados de forma segura
+        </motion.p>
+      )}
     </div>
   );
 }

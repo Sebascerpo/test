@@ -43,6 +43,6 @@ import { PaymentGatewayAdapter } from './infrastructure/adapters/payment-gateway
       useClass: PaymentGatewayAdapter,
     },
   ],
-  exports: [PaymentGatewayPort],
+  exports: [PaymentGatewayPort, PaymentConfig],
 })
 export class PaymentModule {}

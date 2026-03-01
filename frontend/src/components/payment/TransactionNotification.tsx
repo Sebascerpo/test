@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { reset, setTransactionResult } from "@/store/payment-store";
+import { useAppSelector } from "@/store/hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckIcon,
+  XCircleIcon,
+  AlertCircleIcon,
   XIcon,
-  LoaderIcon,
-  ShoppingBagIcon,
 } from "@/components/icons";
 
 interface TransactionNotificationProps {
@@ -18,204 +17,116 @@ interface TransactionNotificationProps {
 export function TransactionNotification({
   onDismiss,
 }: TransactionNotificationProps) {
-  const dispatch = useAppDispatch();
   const { transactionResult, selectedProduct } = useAppSelector(
-    (state) => state.payment,
+    (s) => s.payment,
   );
-  const [isVisible, setIsVisible] = useState(true);
+  const [visible, setVisible] = useState(true);
 
-  const isSuccess = transactionResult?.status === "APPROVED";
+  const isApproved = transactionResult?.status === "APPROVED";
   const isPending = transactionResult?.status === "PENDING";
+  const duration = isPending ? 12 : 6;
 
   const handleDismiss = useCallback(() => {
-    setIsVisible(false);
-    setTimeout(() => {
-      dispatch(reset());
-      onDismiss();
-    }, 300);
-  }, [dispatch, onDismiss]);
-
-  const handleSyncStatus = useCallback(async () => {
-    if (!transactionResult || transactionResult.status !== "PENDING") return;
-
-    try {
-      const response = await fetch(
-        `/api/transactions/reference/${transactionResult.transactionNumber}/sync`,
-      );
-      const data = await response.json();
-
-      if (data.success && data.updated) {
-        dispatch(
-          setTransactionResult({
-            id: data.transaction.id,
-            transactionNumber: data.transaction.reference,
-            status: data.transaction.status,
-            amount: data.transaction.totalAmount,
-            externalTransactionId: data.transaction.externalTransactionId,
-            errorMessage: data.transaction.errorMessage,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error("Sync error:", err);
-    }
-  }, [transactionResult, dispatch]);
+    setVisible(false);
+    setTimeout(onDismiss, 320);
+  }, [onDismiss]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isPending) {
-      interval = setInterval(handleSyncStatus, 5000);
+    // If it becomes approved or fails, we want it to stay a bit longer to be seen
+    // but not forever.
+    if (!isPending) {
+      const t = setTimeout(handleDismiss, 6000);
+      return () => clearTimeout(t);
     }
-
-    // Auto-dismiss after 15 seconds if it stays pending, or 8 if success/error
-    const timer = setTimeout(handleDismiss, isPending ? 15000 : 8000);
-
-    return () => {
-      if (interval) clearInterval(interval);
-      clearTimeout(timer);
-    };
-  }, [handleDismiss, isPending, handleSyncStatus]);
+    // If pending, it stays for the duration or until status changes
+    const t = setTimeout(handleDismiss, duration * 1000);
+    return () => clearTimeout(t);
+  }, [handleDismiss, duration, isPending]);
 
   if (!transactionResult) return null;
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-CO", {
+  const Icon = isApproved
+    ? CheckIcon
+    : isPending
+      ? AlertCircleIcon
+      : XCircleIcon;
+  const iconBg = isApproved
+    ? "bg-foreground text-background"
+    : isPending
+      ? "bg-muted text-foreground/60 border border-border"
+      : "bg-destructive/10 text-destructive border border-destructive/20";
+  const label = isApproved
+    ? "Pago aprobado"
+    : isPending
+      ? "En verificación"
+      : "Pago rechazado";
+  const labelColor = isApproved
+    ? "text-foreground"
+    : isPending
+      ? "text-muted-foreground"
+      : "text-destructive";
+
+  const formatPrice = (p: number) =>
+    new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: import.meta.env.VITE_CURRENCY || "COP",
       minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const getStatusColor = () => {
-    if (isSuccess) return "green";
-    if (isPending) return "amber";
-    return "red";
-  };
+    }).format(p);
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          initial={{ opacity: 0, y: -10, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="fixed top-16 left-4 right-4 z-50 md:left-auto md:right-4 md:w-96"
+          exit={{ opacity: 0, y: -10, scale: 0.97 }}
+          transition={{ type: "spring", damping: 24, stiffness: 320 }}
+          className="fixed top-[60px] left-3 right-3 z-[70] md:left-auto md:right-4 md:w-[360px]"
         >
-          <div
-            className={`rounded-lg shadow-xl border overflow-hidden ${
-              isSuccess
-                ? "bg-green-50 dark:bg-green-900/90 border-green-200 dark:border-green-700"
-                : isPending
-                  ? "bg-amber-50 dark:bg-amber-900/90 border-amber-200 dark:border-amber-700"
-                  : "bg-red-50 dark:bg-red-900/90 border-red-200 dark:border-red-700"
-            }`}
-          >
-            {/* Header */}
-            <div
-              className={`flex items-center justify-between p-3 ${
-                isSuccess
-                  ? "bg-green-100 dark:bg-green-800"
-                  : isPending
-                    ? "bg-amber-100 dark:bg-amber-800"
-                    : "bg-red-100 dark:bg-red-800"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {isSuccess ? (
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                    <CheckIcon size={12} className="text-white" />
-                  </div>
-                ) : isPending ? (
-                  <LoaderIcon
-                    size={20}
-                    className="text-amber-600 dark:text-amber-300 animate-spin"
-                  />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-                    <XIcon size={12} className="text-white" />
-                  </div>
-                )}
-                <span
-                  className={`font-semibold text-sm ${
-                    isSuccess
-                      ? "text-green-700 dark:text-green-200"
-                      : isPending
-                        ? "text-amber-700 dark:text-amber-200"
-                        : "text-red-700 dark:text-red-200"
-                  }`}
-                >
-                  {isSuccess
-                    ? "¡Pago Exitoso!"
-                    : isPending
-                      ? "Pago en Proceso"
-                      : "Pago No Completado"}
-                </span>
+          <div className="bg-background border border-border rounded-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              {/* Icon */}
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}
+              >
+                <Icon size={14} />
               </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-[13px] font-semibold leading-none ${labelColor}`}
+                >
+                  {label}
+                </p>
+                {selectedProduct && (
+                  <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                    {selectedProduct.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Amount */}
+              <p className="text-sm font-semibold flex-shrink-0">
+                {formatPrice(transactionResult.amount)}
+              </p>
+
+              {/* Close */}
               <button
                 onClick={handleDismiss}
-                className={`p-1 rounded-full hover:bg-black/10 transition-colors ${
-                  isSuccess
-                    ? "text-green-600 dark:text-green-300"
-                    : isPending
-                      ? "text-amber-600 dark:text-amber-300"
-                      : "text-red-600 dark:text-red-300"
-                }`}
+                className="w-6 h-6 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
               >
-                <XIcon size={16} />
+                <XIcon size={11} />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-3 space-y-2">
-              {selectedProduct && (
-                <div className="flex items-center gap-2 text-sm">
-                  <ShoppingBagIcon
-                    size={16}
-                    className={
-                      isSuccess
-                        ? "text-green-500"
-                        : isPending
-                          ? "text-amber-500"
-                          : "text-red-500"
-                    }
-                  />
-                  <span className="truncate flex-1">
-                    {selectedProduct.name}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total:</span>
-                <span className="font-bold">
-                  {formatPrice(transactionResult.amount)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Referencia:</span>
-                <span className="font-mono">
-                  {transactionResult.transactionNumber}
-                </span>
-              </div>
-
-              {transactionResult.errorMessage && (
-                <p className="text-xs text-red-600 dark:text-red-300 mt-1">
-                  {transactionResult.errorMessage}
-                </p>
-              )}
-
-              {isSuccess && (
-                <div className="pt-2 border-t border-green-200 dark:border-green-700">
-                  <p className="text-xs text-green-600 dark:text-green-300">
-                    Recibirás un correo de confirmación. Tu pedido será enviado
-                    en 24-48 horas.
-                  </p>
-                </div>
-              )}
-            </div>
+            {/* Progress bar */}
+            <motion.div
+              className="h-[2px] bg-foreground/15 origin-left"
+              initial={{ scaleX: 1 }}
+              animate={{ scaleX: 0 }}
+              transition={{ duration, ease: "linear" }}
+            />
           </div>
         </motion.div>
       )}

@@ -31,11 +31,18 @@ export const createSyncTransactionStatusUseCase = (
       // 1. Find transaction (try by reference first, then id)
       let transaction =
         await transactionRepository.findByReference(idOrReference);
+
       if (!transaction) {
-        transaction = await transactionRepository.findById(idOrReference);
+        // Only try findById if it looks like a UUID
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(idOrReference)) {
+          transaction = await transactionRepository.findById(idOrReference);
+        }
       }
 
       if (!transaction) {
+        console.warn(`[SYNC] Transaction not found for: ${idOrReference}`);
         return err(new Error('Transaction not found'));
       }
 
@@ -124,11 +131,12 @@ export const createSyncTransactionStatusUseCase = (
         );
 
         return ok({ transaction, updated: true });
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (queryRunner.isTransactionActive) {
           await queryRunner.rollbackTransaction();
         }
-        return err(new Error(`Sync update failed: ${e.message}`));
+        const msg = e instanceof Error ? e.message : String(e);
+        return err(new Error(`Sync update failed: ${msg}`));
       } finally {
         await queryRunner.release();
       }

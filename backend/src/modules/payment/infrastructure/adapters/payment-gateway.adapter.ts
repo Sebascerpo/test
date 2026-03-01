@@ -36,12 +36,42 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
     };
   }
 
+  private extractErrorMessage(error: any, defaultMsg: string): string {
+    const axiosError = error as {
+      response?: {
+        data?: {
+          error?: {
+            type: string;
+            reason?: string;
+            messages?: Record<string, string[]>;
+          };
+        };
+      };
+      message?: string;
+    };
+    const data = axiosError.response?.data?.error;
+    if (!data) return axiosError.message || defaultMsg;
+
+    if (data.type === 'INPUT_VALIDATION_ERROR' && data.messages) {
+      // Wompi returns validation errors as an object where keys are fields and values are arrays of strings
+      const details = Object.entries(data.messages)
+        .map(
+          ([field, msgs]) =>
+            `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : String(msgs)}`,
+        )
+        .join('; ');
+      return `Validación: ${details}`;
+    }
+
+    return data.reason || data.type || defaultMsg;
+  }
+
   async tokenizeCard(
     input: CardTokenizationInput,
   ): ResultAsync<CardTokenizationResult> {
     try {
       console.log('[PAYMENT_GATEWAY] Tokenizing card (Public Key)...');
-      const response = await this.api.post(
+      const response = await this.api.post<{ data: { id: string } }>(
         '/tokens/cards',
         {
           number: input.number,
@@ -58,18 +88,9 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
         last_four: input.number.slice(-4),
       });
     } catch (error: any) {
-      console.error(
-        '[PAYMENT_GATEWAY] Tokenization Error Payload:',
-        JSON.stringify(error.response?.data, null, 2),
-      );
-      console.error('[PAYMENT_GATEWAY] Full Error Object:', error.message);
-      return err(
-        new Error(
-          error.response?.data?.error?.reason ||
-            error.response?.data?.error?.type ||
-            'Tokenization failed',
-        ),
-      );
+      const msg = this.extractErrorMessage(error, 'Tokenization failed');
+      console.error('[PAYMENT_GATEWAY] Tokenization Error:', msg);
+      return err(new Error(msg));
     }
   }
 
@@ -78,7 +99,7 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
   ): ResultAsync<PaymentSourceResult> {
     try {
       console.log('[PAYMENT_GATEWAY] Creating payment source (Private Key)...');
-      const response = await this.api.post(
+      const response = await this.api.post<{ data: { id: number } }>(
         '/payment_sources',
         {
           type: input.type,
@@ -93,17 +114,12 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
         id: response.data.data.id.toString(),
       });
     } catch (error: any) {
-      console.error(
-        '[PAYMENT_GATEWAY] Payment Source Error Payload:',
-        JSON.stringify(error.response?.data, null, 2),
+      const msg = this.extractErrorMessage(
+        error,
+        'Failed to create payment source',
       );
-      return err(
-        new Error(
-          error.response?.data?.error?.reason ||
-            error.response?.data?.error?.type ||
-            'Failed to create payment source',
-        ),
-      );
+      console.error('[PAYMENT_GATEWAY] Payment Source Error:', msg);
+      return err(new Error(msg));
     }
   }
 
@@ -115,7 +131,9 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
         reference: input.reference,
       });
 
-      const response = await this.api.post(
+      const response = await this.api.post<{
+        data: { id: string; status: string; reference: string };
+      }>(
         '/transactions',
         {
           amount_in_cents: input.amount_in_cents,
@@ -133,41 +151,32 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
 
       return ok({
         id: response.data.data.id,
-        status: response.data.data.status,
+        status: response.data.data.status as any,
         reference: response.data.data.reference,
       });
     } catch (error: any) {
-      console.error(
-        '[PAYMENT_GATEWAY] Transaction Error Payload:',
-        JSON.stringify(error.response?.data, null, 2),
-      );
-      return err(
-        new Error(
-          error.response?.data?.error?.reason ||
-            error.response?.data?.error?.type ||
-            'Transaction failed',
-        ),
-      );
+      const msg = this.extractErrorMessage(error, 'Transaction failed');
+      console.error('[PAYMENT_GATEWAY] Transaction Error:', msg);
+      return err(new Error(msg));
     }
   }
 
   async getTransactionStatus(id: string): ResultAsync<TransactionResult> {
     try {
       console.log('[PAYMENT_GATEWAY] Fetching status (Private Key)...', { id });
-      const response = await this.api.get(`/transactions/${id}`, {
+      const response = await this.api.get<{
+        data: { id: string; status: string; reference: string };
+      }>(`/transactions/${id}`, {
         headers: this.getPrivateHeaders(),
       });
       return ok({
         id: response.data.data.id,
-        status: response.data.data.status,
+        status: response.data.data.status as any,
         reference: response.data.data.reference,
       });
     } catch (error: any) {
-      return err(
-        new Error(
-          error.response?.data?.error?.reason || 'Failed to fetch status',
-        ),
-      );
+      const msg = this.extractErrorMessage(error, 'Failed to fetch status');
+      return err(new Error(msg));
     }
   }
 
@@ -176,19 +185,21 @@ export class PaymentGatewayAdapter implements PaymentGatewayPort {
       console.log(
         '[PAYMENT_GATEWAY] Fetching acceptance token (Public Key)...',
       );
-      const response = await this.api.get(
-        `/merchants/${this.config.publicKey}`,
-        { headers: this.getPublicHeaders() },
-      );
+      const response = await this.api.get<{
+        data: { presigned_acceptance: { acceptance_token: string } };
+      }>(`/merchants/${this.config.publicKey}`, {
+        headers: this.getPublicHeaders(),
+      });
       const acceptanceToken =
         response.data.data.presigned_acceptance.acceptance_token;
       return ok(acceptanceToken);
     } catch (error: any) {
-      console.error(
-        '[PAYMENT_GATEWAY] Acceptance Token Error:',
-        error.response?.data || error.message,
+      const msg = this.extractErrorMessage(
+        error,
+        'Failed to fetch acceptance token',
       );
-      return err(new Error('Failed to fetch acceptance token'));
+      console.error('[PAYMENT_GATEWAY] Acceptance Token Error:', msg);
+      return err(new Error(msg));
     }
   }
 

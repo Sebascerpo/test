@@ -11,6 +11,7 @@ import {
 } from "redux-persist";
 
 // Types
+// Added "result" step for the dedicated transaction result page
 export type Step = "product" | "payment-info" | "summary" | "result";
 
 export interface CreditCard {
@@ -180,12 +181,10 @@ export const detectCardBrand = (
 ): "VISA" | "MASTERCARD" | "UNKNOWN" => {
   const cleaned = number.replace(/\s/g, "");
 
-  // VISA: starts with 4
   if (/^4/.test(cleaned)) {
     return "VISA";
   }
 
-  // MasterCard: starts with 51-55 or 2221-2720
   if (/^(5[1-5]|2[2-7][0-9]{2})/.test(cleaned)) {
     return "MASTERCARD";
   }

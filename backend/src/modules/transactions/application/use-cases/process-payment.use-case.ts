@@ -181,7 +181,7 @@ export const createProcessPaymentUseCase = (
       }
 
       // Step 6: Create External transaction
-      const amountInCents = fees.totalAmount * 100;
+      const amountInCents = Math.round(fees.totalAmount * 100);
       const signature = paymentGateway.generateSignature(
         transactionEntity.reference,
         amountInCents,
@@ -255,11 +255,10 @@ export const createProcessPaymentUseCase = (
             ? 'Payment successful!'
             : 'Payment processed',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       await queryRunner.rollbackTransaction();
-      return err(
-        new Error(`Payment process failed: ${error?.message || 'Unknown'}`),
-      );
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      return err(new Error(`Payment process failed: ${msg}`));
     } finally {
       await queryRunner.release();
     }
