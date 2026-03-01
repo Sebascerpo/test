@@ -78,6 +78,8 @@ export class TransactionsController {
         fullName: dto.deliveryInfo.fullName,
         email: dto.deliveryInfo.email,
         phone: dto.deliveryInfo.phone,
+        documentType: dto.deliveryInfo.documentType,
+        documentNumber: dto.deliveryInfo.documentNumber,
         address: dto.deliveryInfo.address,
         city: dto.deliveryInfo.city,
         postalCode: dto.deliveryInfo.postalCode,

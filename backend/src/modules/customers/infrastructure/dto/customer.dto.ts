@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class UpsertCustomerDto {
   @IsString()
@@ -11,6 +11,14 @@ export class UpsertCustomerDto {
   @IsString()
   @MinLength(7)
   phone: string;
+
+  @IsOptional()
+  @IsString()
+  documentType?: string;
+
+  @IsOptional()
+  @IsString()
+  documentNumber?: string;
 
   @IsString()
   @MinLength(5)

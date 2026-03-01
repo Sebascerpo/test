@@ -89,6 +89,8 @@ export async function processPaymentApi(
           fullName: `${payload.delivery.firstName} ${payload.delivery.lastName}`,
           email: payload.delivery.email,
           phone: payload.delivery.phone,
+          documentType: payload.delivery.documentType,
+          documentNumber: payload.delivery.documentNumber,
           address: payload.delivery.address,
           city: payload.delivery.city,
           postalCode: payload.delivery.postalCode,

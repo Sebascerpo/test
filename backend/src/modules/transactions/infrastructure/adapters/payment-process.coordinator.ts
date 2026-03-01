@@ -53,10 +53,21 @@ export class PaymentProcessCoordinator implements PaymentProcessCoordinatorPort 
           fullName: input.deliveryInfo.fullName,
           email: input.deliveryInfo.email,
           phone: input.deliveryInfo.phone,
+          documentType: input.deliveryInfo.documentType ?? null,
+          documentNumber: input.deliveryInfo.documentNumber ?? null,
           address: input.deliveryInfo.address,
           city: input.deliveryInfo.city,
           postalCode: input.deliveryInfo.postalCode,
         });
+        customer = await runner.manager.save(customer);
+      } else {
+        customer.fullName = input.deliveryInfo.fullName;
+        customer.phone = input.deliveryInfo.phone;
+        customer.documentType = input.deliveryInfo.documentType ?? null;
+        customer.documentNumber = input.deliveryInfo.documentNumber ?? null;
+        customer.address = input.deliveryInfo.address;
+        customer.city = input.deliveryInfo.city;
+        customer.postalCode = input.deliveryInfo.postalCode;
         customer = await runner.manager.save(customer);
       }
 

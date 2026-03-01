@@ -12,25 +12,25 @@ export class DeliveryOrmEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'transaction_id', unique: true })
+  @Column({ type: 'varchar', name: 'transaction_id', unique: true })
   transactionId: string;
 
-  @Column({ name: 'transaction_reference', unique: true })
+  @Column({ type: 'varchar', name: 'transaction_reference', unique: true })
   transactionReference: string;
 
-  @Column({ name: 'product_id' })
+  @Column({ type: 'varchar', name: 'product_id' })
   productId: string;
 
-  @Column({ name: 'customer_id' })
+  @Column({ type: 'varchar', name: 'customer_id' })
   customerId: string;
 
   @Column({ name: 'address_snapshot', type: 'text' })
   addressSnapshot: string;
 
-  @Column({ name: 'city_snapshot' })
+  @Column({ type: 'varchar', name: 'city_snapshot' })
   citySnapshot: string;
 
-  @Column({ name: 'postal_code_snapshot', nullable: true })
+  @Column({ type: 'varchar', name: 'postal_code_snapshot', nullable: true })
   postalCodeSnapshot: string;
 
   @Column({

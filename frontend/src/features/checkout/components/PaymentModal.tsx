@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useDragControls,
+  useReducedMotion,
+  type PanInfo,
+} from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   Product,
@@ -54,6 +60,7 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const dispatch = useAppDispatch();
   const shouldReduceMotion = useReducedMotion();
+  const dragControls = useDragControls();
   const {
     cardPreview,
     deliveryInfo: savedDelivery,
@@ -251,6 +258,11 @@ export function PaymentModal({
   };
 
   const total = product.price * quantity + FEES.baseFee + FEES.deliveryFee;
+  const handleSheetDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.y > 110 || info.velocity.y > 900) {
+      onOpenChange(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -281,8 +293,18 @@ export function PaymentModal({
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={transitions.sheetSpring(!!shouldReduceMotion)}
+          drag="y"
+          dragListener={false}
+          dragControls={dragControls}
+          dragDirectionLock
+          dragConstraints={{ top: 0, bottom: 220 }}
+          dragElastic={{ top: 0, bottom: 0.24 }}
+          onDragEnd={handleSheetDragEnd}
         >
-          <div className="flex justify-center pt-3 flex-shrink-0">
+          <div
+            className="flex justify-center pt-3 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+            onPointerDown={(event) => dragControls.start(event)}
+          >
             <div className="w-9 h-1 rounded-full bg-border" />
           </div>
 

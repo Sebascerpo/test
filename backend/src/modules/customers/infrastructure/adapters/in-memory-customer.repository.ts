@@ -20,6 +20,8 @@ export class InMemoryCustomerRepository implements CustomerRepositoryPort {
       fullName: deliveryInfo.fullName,
       email: deliveryInfo.email,
       phone: deliveryInfo.phone,
+      documentType: deliveryInfo.documentType ?? null,
+      documentNumber: deliveryInfo.documentNumber ?? null,
       address: deliveryInfo.address,
       city: deliveryInfo.city,
       postalCode: deliveryInfo.postalCode,

@@ -25,33 +25,6 @@ const formatPrice = (price: number) =>
     minimumFractionDigits: 0,
   }).format(price);
 
-function StockBar({ stock }: { stock: number }) {
-  if (stock <= 0) return null;
-
-  const isLow = stock <= 5;
-  const percentage = Math.min((stock / 20) * 100, 100);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-[10px] font-bold uppercase tracking-wider ${isLow ? "text-orange-500" : "text-emerald-600"}`}
-        >
-          {isLow ? `¡Solo ${stock} disponibles!` : "Stock disponible"}
-        </span>
-      </div>
-      <div className="h-1 w-full bg-muted rounded-full overflow-hidden shadow-inner-soft">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className={`h-full rounded-full ${isLow ? "bg-orange-400" : "bg-emerald-500"}`}
-        />
-      </div>
-    </div>
-  );
-}
-
 function ProductSkeleton() {
   return (
     <div className="rounded-2xl border border-border surface-elevated overflow-hidden">
@@ -227,7 +200,6 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                 <ZapIcon size={16} className="fill-current" />
               </button>
 
-              <StockBar stock={product.stock} />
             </>
           )}
         </div>
@@ -298,13 +270,6 @@ export function ProductCatalog({
             <p className="text-muted-foreground text-sm mt-2 leading-relaxed max-w-xl">
               Tecnología de calidad con envío rápido a todo el país
             </p>
-          </div>
-          {/* Free shipping banner */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-border surface-1 shadow-xs text-sm whitespace-nowrap self-start sm:self-auto">
-            <TruckIcon size={14} className="text-foreground/60" />
-            <span className="text-foreground/70 font-medium text-xs">
-              Envío gratis desde $300.000
-            </span>
           </div>
         </div>
       </motion.div>

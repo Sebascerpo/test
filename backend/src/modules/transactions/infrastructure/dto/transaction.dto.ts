@@ -20,6 +20,14 @@ export class DeliveryInfoDto {
   @IsString()
   phone: string;
 
+  @IsOptional()
+  @IsString()
+  documentType?: string;
+
+  @IsOptional()
+  @IsString()
+  documentNumber?: string;
+
   @IsString()
   address: string;
 

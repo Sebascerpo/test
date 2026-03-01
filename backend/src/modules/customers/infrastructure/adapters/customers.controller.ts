@@ -35,6 +35,8 @@ export class CustomersController {
       fullName: body.fullName,
       email: body.email,
       phone: body.phone,
+      documentType: body.documentType,
+      documentNumber: body.documentNumber,
       address: body.address,
       city: body.city,
       postalCode: body.postalCode,

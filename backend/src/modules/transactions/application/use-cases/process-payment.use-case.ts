@@ -19,6 +19,8 @@ export interface ProcessPaymentInput {
     fullName: string;
     email: string;
     phone: string;
+    documentType?: string;
+    documentNumber?: string;
     address: string;
     city: string;
     postalCode: string;
