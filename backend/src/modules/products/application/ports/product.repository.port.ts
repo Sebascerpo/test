@@ -1,0 +1,15 @@
+// Port - Product Repository Interface (Hexagonal Architecture)
+import { Product, ProductStock } from '../../domain/product.entity';
+
+export abstract class ProductRepositoryPort {
+  abstract findAll(): Promise<Product[]>;
+  abstract findById(id: string): Promise<Product | null>;
+  abstract updateStock(
+    productId: string,
+    quantity: number,
+  ): Promise<Product | null>;
+  abstract checkAvailability(
+    productId: string,
+    quantity: number,
+  ): Promise<boolean>;
+}

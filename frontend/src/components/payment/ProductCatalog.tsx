@@ -305,10 +305,10 @@ export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
         className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3"
       >
         {[
-          { icon: "🔒", title: "Pago Seguro", desc: "SSL 256-bit" },
-          { icon: "🚚", title: "Envío Rápido", desc: "24-48 horas" },
-          { icon: "✅", title: "Garantía", desc: "12 meses" },
-          { icon: "💳", title: "Cuotas", desc: "Sin interés" },
+          { icon: "", title: "Pago Seguro", desc: "SSL 256-bit" },
+          { icon: "", title: "Envío Rápido", desc: "24-48 horas" },
+          { icon: "", title: "Garantía", desc: "12 meses" },
+          { icon: "", title: "Cuotas", desc: "Sin interés" },
         ].map((badge, index) => (
           <div
             key={index}
@@ -326,7 +326,7 @@ export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
       {/* Footer */}
       <div className="mt-8 text-center text-xs text-muted-foreground">
         <p className="flex items-center justify-center gap-1.5">
-          <span className="text-base">🛒</span>
+          <span className="text-base"></span>
           Pagos seguros procesados
         </p>
       </div>
