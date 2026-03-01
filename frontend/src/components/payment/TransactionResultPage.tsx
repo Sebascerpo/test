@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { reset, setTransactionResult } from "@/store/payment-store";
+import { reset, syncTransactionStatus } from "@/store/payment-store";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 
 const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
@@ -248,6 +249,8 @@ export function TransactionResultPage({
   onDismiss,
 }: TransactionResultPageProps) {
   const dispatch = useAppDispatch();
+  const { isOnline: localOnline } = useNetworkStatus();
+
   const {
     transactionResult,
     selectedProduct,
@@ -307,6 +310,19 @@ export function TransactionResultPage({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.2 } }}
     >
+      <AnimatePresence>
+        {!localOnline && isPending && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute top-10 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-orange-500/10 text-orange-500 text-[11px] font-semibold border border-orange-500/20 backdrop-blur-md flex items-center gap-2"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+            Sin conexión — Reintentando...
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* ── Background layers ──────────────────────────────────────────── */}
       {isPending && <RadarRings />}
       {isDeclined && <DeclinedFlash />}

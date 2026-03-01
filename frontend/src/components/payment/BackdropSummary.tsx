@@ -1,8 +1,5 @@
-"use client";
-
 import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setTransactionResult, setCurrentStep } from "@/store/payment-store";
 import {
   ArrowLeftIcon,
   ShieldCheckIcon,
@@ -11,8 +8,12 @@ import {
   PackageIcon,
   CheckIcon,
   LockIcon,
+  RefreshIcon,
+  WifiOffIcon,
 } from "@/components/icons";
-import { motion } from "framer-motion";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { processPayment, setCurrentStep } from "@/store/payment-store";
+import { motion, AnimatePresence } from "framer-motion";
 
 const FEES = {
   baseFee: Number(import.meta.env.VITE_BASE_FEE || 2500),
@@ -59,8 +60,15 @@ function Row({
 
 export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
-  const { selectedProduct, quantity, creditCard, deliveryInfo } =
-    useAppSelector((s) => s.payment);
+  const { isOnline } = useNetworkStatus();
+  const {
+    selectedProduct,
+    quantity,
+    creditCard,
+    deliveryInfo,
+    isLoading,
+    error,
+  } = useAppSelector((s) => s.payment);
   const [tapped, setTapped] = useState(false);
 
   if (!selectedProduct || !creditCard || !deliveryInfo) return null;
@@ -68,78 +76,15 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
   const productTotal = selectedProduct.price * quantity;
   const total = productTotal + FEES.baseFee + FEES.deliveryFee;
 
-  const handlePay = () => {
-    if (tapped) return;
+  const handlePay = async () => {
+    if (tapped || !isOnline || isLoading) return;
     setTapped(true);
 
-    // ── Step 1: Navigate to result page IMMEDIATELY with PENDING status ──────
-    dispatch(
-      setTransactionResult({
-        id: "pending-optimistic",
-        transactionNumber: "...",
-        status: "PENDING",
-        amount: total,
-      }),
-    );
-    dispatch(setCurrentStep("result"));
+    // ── Step 1: Fire ROP-style API call via Thunk ────────────────────────────
+    await dispatch(processPayment());
+
+    // Complete the step
     onComplete();
-
-    // ── Step 2: Fire API call in background, update result when it returns ───
-    const payload = {
-      productId: selectedProduct.id,
-      quantity,
-      deliveryInfo: {
-        fullName: `${deliveryInfo.firstName} ${deliveryInfo.lastName}`,
-        email: deliveryInfo.email,
-        phone: deliveryInfo.phone,
-        address: deliveryInfo.address,
-        city: deliveryInfo.city,
-        postalCode: deliveryInfo.postalCode,
-      },
-      cardInfo: {
-        number: creditCard.number.replace(/\s/g, ""),
-        cvv: creditCard.cvc,
-        expMonth: creditCard.expiryMonth,
-        expYear: creditCard.expiryYear,
-        cardHolder: creditCard.holderName,
-      },
-    };
-
-    fetch("/api/payment/process", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        dispatch(
-          setTransactionResult({
-            id: data.transaction?.id ?? "error",
-            transactionNumber: data.transaction?.reference ?? "N/A",
-            status:
-              data.success && data.transaction?.status
-                ? data.transaction.status
-                : "ERROR",
-            amount: data.transaction?.totalAmount ?? total,
-            externalTransactionId: data.transaction?.externalTransactionId,
-            errorMessage: !data.success
-              ? data.message || "Error al procesar el pago"
-              : data.transaction?.errorMessage,
-          }),
-        );
-      })
-      .catch((err) => {
-        dispatch(
-          setTransactionResult({
-            id: "error",
-            transactionNumber: "N/A",
-            status: "ERROR",
-            amount: total,
-            errorMessage:
-              err instanceof Error ? err.message : "Error de conexión",
-          }),
-        );
-      });
   };
 
   return (
@@ -272,14 +217,52 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
               Transacción segura y encriptada
             </p>
           </div>
+
+          <AnimatePresence>
+            {!isOnline && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mb-3 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center gap-2.5"
+              >
+                <WifiOffIcon size={16} className="text-orange-500" />
+                <p className="text-xs text-orange-600 font-medium leading-tight">
+                  Parece que perdiste la conexión. No te preocupes, guardamos tu
+                  progreso.
+                </p>
+              </motion.div>
+            )}
+
+            {error && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-[11px] text-red-500 mb-2 font-medium"
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
           <motion.button
             onClick={handlePay}
-            disabled={tapped}
-            className="sc-btn-primary"
-            whileTap={{ scale: 0.98 }}
+            disabled={tapped || !isOnline || isLoading}
+            className={`sc-btn-primary ${!isOnline || tapped || isLoading ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
+            whileTap={isOnline && !isLoading ? { scale: 0.98 } : {}}
           >
-            <LockIcon size={15} />
-            Pagar {fmt(total)}
+            {isLoading ? (
+              <RefreshIcon size={15} className="animate-spin" />
+            ) : !isOnline ? (
+              <WifiOffIcon size={15} />
+            ) : (
+              <LockIcon size={15} />
+            )}
+            {isLoading
+              ? "Procesando..."
+              : !isOnline
+                ? "Sin conexión"
+                : `Pagar ${fmt(total)}`}
           </motion.button>
         </div>
       </motion.div>

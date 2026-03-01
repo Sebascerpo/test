@@ -2,8 +2,9 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import {
   setCurrentStep,
   reset,
-  setTransactionResult,
+  syncTransactionStatus,
 } from "@/store/payment-store";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { ProductCatalog } from "@/components/payment/ProductCatalog";
 import { PaymentModal } from "@/components/payment/PaymentModal";
 import { BackdropSummary } from "@/components/payment/BackdropSummary";
@@ -11,7 +12,7 @@ import { TransactionResultPage } from "@/components/payment/TransactionResultPag
 import { TransactionNotification } from "@/components/payment/TransactionNotification";
 import { ShieldCheckIcon } from "@/components/icons";
 import { useCallback, useState, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -23,10 +24,8 @@ function AppContent() {
     deliveryInfo,
   } = useAppSelector((state) => state.payment);
 
+  const { isOnline } = useNetworkStatus();
   const [isSyncing, setIsSyncing] = useState(false);
-  const syncIntervalRef = useCallback(() => {
-    // We'll use a local ref for the interval to avoid re-renders
-  }, []);
 
   // Toast shown ONLY when user leaves result page — never on immediate completion
   const [showToast, setShowToast] = useState(false);
@@ -79,39 +78,20 @@ function AppContent() {
       return;
 
     setIsSyncing(true);
-    try {
-      const res = await fetch(
-        `/api/transactions/reference/${transactionResult.transactionNumber}/sync`,
-      );
-      const data = await res.json();
-      if (data.success && data.transaction) {
-        const newStatus = data.transaction.status;
-        if (newStatus !== transactionResult.status) {
-          dispatch(
-            setTransactionResult({
-              id: data.transaction.id,
-              transactionNumber: data.transaction.reference,
-              status: newStatus,
-              amount: data.transaction.totalAmount,
-              externalTransactionId: data.transaction.externalTransactionId,
-              errorMessage: data.transaction.errorMessage,
-            }),
-          );
-        }
-      }
-    } catch (err) {
-      console.warn("[APP] Sync failed", err);
-    } finally {
-      setIsSyncing(false);
-    }
+    await dispatch(syncTransactionStatus(transactionResult.transactionNumber));
+    setIsSyncing(false);
   }, [transactionResult, dispatch]);
 
-  useState(() => {
-    // Initial sync setup is handled by the useEffect below
-  });
+  // ── Initial and Recovery Logic ──────────────────────────────────────────────
+  useEffect(() => {
+    // Initial check: If we have a pending transaction, sync it immediately
+    if (transactionResult?.status === "PENDING") {
+      syncStatus();
+    }
+  }, []); // Only once on mount
 
   useEffect(() => {
-    if (transactionResult?.status !== "PENDING") return;
+    if (transactionResult?.status !== "PENDING" || !isOnline) return;
 
     // First check after 2s
     const firstSync = setTimeout(syncStatus, 2000);
@@ -125,6 +105,7 @@ function AppContent() {
   }, [
     transactionResult?.status,
     transactionResult?.transactionNumber,
+    isOnline,
     syncStatus,
   ]);
 
@@ -160,6 +141,18 @@ function AppContent() {
         {/* Toast — appears after leaving result page */}
         {showNotification && transactionResult && (
           <TransactionNotification onDismiss={handleNotificationDismiss} />
+        )}
+
+        {/* Offline feedback */}
+        {!isOnline && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full bg-orange-500/95 text-white text-xs font-medium shadow-xl backdrop-blur flex items-center gap-2"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            Sin conexión — Verificaremos tu pago al volver
+          </motion.div>
         )}
 
         {/* Product catalog — dimmed while checkout is open */}
