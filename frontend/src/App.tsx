@@ -19,13 +19,13 @@ function AppContent() {
   const {
     currentStep,
     selectedProduct,
+    pendingTransactionReference,
     transactionResult,
     creditCard,
     deliveryInfo,
   } = useAppSelector((state) => state.payment);
 
   const { isOnline } = useNetworkStatus();
-  const [isSyncing, setIsSyncing] = useState(false);
 
   // Toast shown ONLY when user leaves result page — never on immediate completion
   const [showToast, setShowToast] = useState(false);
@@ -36,7 +36,9 @@ function AppContent() {
     !!selectedProduct &&
     !!creditCard &&
     !!deliveryInfo;
-  const showResultPage = currentStep === "result" && !!transactionResult;
+  const showResultPage =
+    currentStep === "result" &&
+    (!!transactionResult || !!pendingTransactionReference);
   const showNotification =
     currentStep === "product" && !!transactionResult && showToast;
 
@@ -70,28 +72,19 @@ function AppContent() {
 
   // ── Polling logic (Centralized) ──────────────────────────────────────────────
   const syncStatus = useCallback(async () => {
-    if (
-      transactionResult?.status !== "PENDING" ||
-      !transactionResult.transactionNumber ||
-      transactionResult.transactionNumber === "..."
-    )
-      return;
-
-    setIsSyncing(true);
-    await dispatch(syncTransactionStatus(transactionResult.transactionNumber));
-    setIsSyncing(false);
-  }, [transactionResult, dispatch]);
+    if (!pendingTransactionReference) return;
+    await dispatch(syncTransactionStatus(pendingTransactionReference));
+  }, [pendingTransactionReference, dispatch]);
 
   // ── Initial and Recovery Logic ──────────────────────────────────────────────
   useEffect(() => {
-    // Initial check: If we have a pending transaction, sync it immediately
-    if (transactionResult?.status === "PENDING") {
-      syncStatus();
-    }
-  }, []); // Only once on mount
+    if (!pendingTransactionReference) return;
+    dispatch(setCurrentStep("result"));
+    syncStatus();
+  }, [dispatch, pendingTransactionReference, syncStatus]);
 
   useEffect(() => {
-    if (transactionResult?.status !== "PENDING" || !isOnline) return;
+    if (!pendingTransactionReference || !isOnline) return;
 
     // First check after 2s
     const firstSync = setTimeout(syncStatus, 2000);
@@ -103,8 +96,7 @@ function AppContent() {
       clearInterval(interval);
     };
   }, [
-    transactionResult?.status,
-    transactionResult?.transactionNumber,
+    pendingTransactionReference,
     isOnline,
     syncStatus,
   ]);

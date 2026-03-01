@@ -19,6 +19,7 @@ import { CustomerOrmEntity } from '../../../customers/infrastructure/adapters/cu
 import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
 
 export interface ProcessPaymentInput {
+  reference?: string;
   productId: string;
   quantity: number;
   deliveryInfo: {
@@ -64,6 +65,18 @@ export const createProcessPaymentUseCase = (
   return async (
     input: ProcessPaymentInput,
   ): ResultAsync<ProcessPaymentResult> => {
+    if (input.reference) {
+      const existingTransaction = await transactionRepository.findByReference(
+        input.reference,
+      );
+      if (existingTransaction) {
+        return ok({
+          transaction: existingTransaction,
+          message: 'Transaction already exists for this payment attempt',
+        });
+      }
+    }
+
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -116,9 +129,9 @@ export const createProcessPaymentUseCase = (
       }
 
       // Step 3: Create pending transaction
-      const timestamp = Date.now().toString(36).toUpperCase();
-      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-      const reference = `TX-${timestamp}-${random}`;
+      const reference =
+        input.reference ??
+        `TX-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       let transactionEntity = queryRunner.manager.create(TransactionOrmEntity, {
         reference,
@@ -257,6 +270,21 @@ export const createProcessPaymentUseCase = (
       });
     } catch (error: unknown) {
       await queryRunner.rollbackTransaction();
+
+      // Concurrent duplicate request with same reference: return existing tx.
+      const dbError = error as { code?: string };
+      if (dbError.code === '23505' && input.reference) {
+        const existingTransaction = await transactionRepository.findByReference(
+          input.reference,
+        );
+        if (existingTransaction) {
+          return ok({
+            transaction: existingTransaction,
+            message: 'Transaction already exists for this payment attempt',
+          });
+        }
+      }
+
       const msg = error instanceof Error ? error.message : 'Unknown';
       return err(new Error(`Payment process failed: ${msg}`));
     } finally {

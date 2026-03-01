@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { reset, syncTransactionStatus } from "@/store/payment-store";
+import { reset } from "@/store/payment-store";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
 
@@ -252,6 +252,7 @@ export function TransactionResultPage({
   const { isOnline: localOnline } = useNetworkStatus();
 
   const {
+    pendingTransactionReference,
     transactionResult,
     selectedProduct,
     creditCard,
@@ -259,16 +260,26 @@ export function TransactionResultPage({
     quantity,
   } = useAppSelector((s) => s.payment);
 
+  const effectiveTransaction =
+    transactionResult ??
+    (pendingTransactionReference
+      ? {
+          id: "pending-local",
+          transactionNumber: pendingTransactionReference,
+          status: "PENDING" as const,
+          amount: 0,
+        }
+      : null);
+
   const [flooded, setFlooded] = useState(false);
   const [showContent, setShowContent] = useState(false);
-  const latestStatus = useRef(transactionResult?.status);
 
-  const isPending = transactionResult?.status === "PENDING";
-  const isApproved = transactionResult?.status === "APPROVED";
+  const isPending = effectiveTransaction?.status === "PENDING";
+  const isApproved = effectiveTransaction?.status === "APPROVED";
   const isDeclined =
-    transactionResult?.status === "DECLINED" ||
-    transactionResult?.status === "ERROR" ||
-    transactionResult?.status === "VOIDED";
+    effectiveTransaction?.status === "DECLINED" ||
+    effectiveTransaction?.status === "ERROR" ||
+    effectiveTransaction?.status === "VOIDED";
 
   // ── Real-time sync ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -280,7 +291,7 @@ export function TransactionResultPage({
     dispatch(reset());
   }, [dispatch, onDismiss]);
 
-  if (!transactionResult) return null;
+  if (!effectiveTransaction) return null;
 
   // ── Background color ────────────────────────────────────────────────────────
   const pageBg = flooded
@@ -350,7 +361,7 @@ export function TransactionResultPage({
           >
             {/* Status icon */}
             <div className="mb-5 relative">
-              <StatusIcon status={transactionResult.status} flooded={flooded} />
+              <StatusIcon status={effectiveTransaction.status} flooded={flooded} />
             </div>
 
             {/* Heartbeat line — shown briefly then fades */}
@@ -379,7 +390,7 @@ export function TransactionResultPage({
             >
               <AnimatePresence mode="wait">
                 <motion.h1
-                  key={transactionResult.status + String(flooded)}
+                  key={effectiveTransaction.status + String(flooded)}
                   className={`text-[27px] font-semibold tracking-tight leading-tight ${textPrimary}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -473,7 +484,7 @@ export function TransactionResultPage({
                       <p
                         className={`text-sm font-semibold truncate ${textPrimary}`}
                       >
-                        {selectedProduct.name}
+                      {selectedProduct.name}
                       </p>
                       <p className={`text-xs mt-0.5 ${textSecondary}`}>
                         Cantidad: {quantity}
@@ -482,7 +493,9 @@ export function TransactionResultPage({
                     <p
                       className={`text-sm font-semibold flex-shrink-0 ${textPrimary}`}
                     >
-                      {fmt(transactionResult.amount)}
+                      {effectiveTransaction.amount > 0
+                        ? fmt(effectiveTransaction.amount)
+                        : "Por confirmar"}
                     </p>
                   </div>
                 )}
@@ -492,13 +505,13 @@ export function TransactionResultPage({
                   {[
                     {
                       label: "Referencia",
-                      value: transactionResult.transactionNumber,
+                      value: effectiveTransaction.transactionNumber,
                       mono: true,
                     },
-                    transactionResult.externalTransactionId
+                    effectiveTransaction.externalTransactionId
                       ? {
                           label: "ID externo",
-                          value: transactionResult.externalTransactionId,
+                          value: effectiveTransaction.externalTransactionId,
                           mono: true,
                         }
                       : null,
@@ -546,7 +559,7 @@ export function TransactionResultPage({
                       ? `Confirmación enviada a ${deliveryInfo?.email ?? "tu correo"}. Entrega estimada en 24–48 horas.`
                       : isPending
                         ? "Actualizamos el estado cada 4 segundos. Puedes esperar o cerrar — recibirás una notificación."
-                        : (transactionResult.errorMessage ??
+                        : (effectiveTransaction.errorMessage ??
                           "Verifica los datos de tu tarjeta e intenta de nuevo.")}
                   </p>
                 </div>

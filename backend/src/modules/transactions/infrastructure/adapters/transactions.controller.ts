@@ -71,6 +71,7 @@ export class TransactionsController {
     @Body() dto: ProcessPaymentDto,
   ): Promise<TransactionResponseDto> {
     const input: ProcessPaymentInput = {
+      reference: dto.reference,
       productId: dto.productId,
       quantity: dto.quantity,
       deliveryInfo: {

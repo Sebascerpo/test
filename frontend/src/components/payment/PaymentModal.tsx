@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   setCreditCard,
@@ -145,6 +145,52 @@ export function PaymentModal({
   const [additionalInfo, setAdditionalInfo] = useState(
     savedDelivery?.additionalInfo || "",
   );
+
+  // Persist draft form state on every keystroke for crash/refresh recovery.
+  useEffect(() => {
+    const [month = "", year = ""] = expiry.split("/");
+    dispatch(
+      setCreditCard({
+        number: cardNumber,
+        holderName,
+        expiryMonth: month,
+        expiryYear: year,
+        cvc,
+        brand,
+      }),
+    );
+  }, [dispatch, cardNumber, holderName, expiry, cvc, brand]);
+
+  useEffect(() => {
+    dispatch(
+      setDeliveryInfo({
+        firstName,
+        lastName,
+        email,
+        phone,
+        documentType: docType,
+        documentNumber: docNumber,
+        address,
+        city,
+        state,
+        postalCode,
+        additionalInfo,
+      }),
+    );
+  }, [
+    dispatch,
+    firstName,
+    lastName,
+    email,
+    phone,
+    docType,
+    docNumber,
+    address,
+    city,
+    state,
+    postalCode,
+    additionalInfo,
+  ]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleCardNumber = (val: string) => {

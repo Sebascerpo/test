@@ -14,6 +14,9 @@ import {
   PURGE,
   REGISTER,
 } from "redux-persist";
+import storage from "redux-persist/lib/storage";
+import type { ApiFailure } from "@/lib/payment-api";
+import { processPaymentApi, syncTransactionStatusApi } from "@/lib/payment-api";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +70,7 @@ interface PaymentState {
   quantity: number;
   creditCard: CreditCard | null;
   deliveryInfo: DeliveryInfo | null;
+  pendingTransactionReference: string | null;
   transactionResult: TransactionResult | null;
   isLoading: boolean;
   error: string | null;
@@ -78,6 +82,7 @@ const initialState: PaymentState = {
   quantity: 1,
   creditCard: null,
   deliveryInfo: null,
+  pendingTransactionReference: null,
   transactionResult: null,
   isLoading: false,
   error: null,
@@ -88,7 +93,17 @@ const initialState: PaymentState = {
  */
 export type AsyncResult<T> =
   | { success: true; data: T }
-  | { success: false; error: string };
+  | { success: false; error: ApiFailure };
+
+const createClientPaymentReference = (): string => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const randomSource =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().replace(/-/g, "")
+      : Math.random().toString(36).slice(2, 10);
+  const random = randomSource.slice(0, 8).toUpperCase();
+  return `TX-${timestamp}-${random}`;
+};
 
 // ── Async Thunks (ROP Principles) ───────────────────────────────────────────
 
@@ -98,58 +113,37 @@ export type AsyncResult<T> =
  */
 export const processPayment = createAsyncThunk(
   "payment/process",
-  async (_, { getState }): Promise<AsyncResult<TransactionResult>> => {
+  async (_, { getState, dispatch }): Promise<AsyncResult<TransactionResult>> => {
     const state = (getState() as { payment: PaymentState }).payment;
     if (!state.selectedProduct || !state.creditCard || !state.deliveryInfo) {
-      return { success: false, error: "Faltan datos para procesar el pago" };
-    }
-
-    try {
-      const response = await fetch("/api/payment/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: state.selectedProduct.id,
-          quantity: state.quantity,
-          cardInfo: {
-            number: state.creditCard.number.replace(/\s/g, ""),
-            cvv: state.creditCard.cvc,
-            expMonth: state.creditCard.expiryMonth,
-            expYear: state.creditCard.expiryYear,
-            cardHolder: state.creditCard.holderName,
-          },
-          deliveryInfo: {
-            fullName: `${state.deliveryInfo.firstName} ${state.deliveryInfo.lastName}`,
-            email: state.deliveryInfo.email,
-            phone: state.deliveryInfo.phone,
-            address: state.deliveryInfo.address,
-            city: state.deliveryInfo.city,
-            postalCode: state.deliveryInfo.postalCode,
-          },
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success && data.transaction) {
-        return {
-          success: true,
-          data: {
-            id: data.transaction.id,
-            transactionNumber: data.transaction.reference,
-            status: data.transaction.status,
-            amount: data.transaction.totalAmount,
-            externalTransactionId: data.transaction.externalTransactionId,
-            errorMessage: data.transaction.errorMessage,
-          },
-        };
-      }
       return {
         success: false,
-        error: data.message || "Error al procesar el pago",
+        error: {
+          code: "INVALID_RESPONSE",
+          message: "Faltan datos para procesar el pago.",
+          retryable: false,
+        },
       };
-    } catch (err) {
-      return { success: false, error: "Sin conexión o error de servidor" };
     }
+
+    const reference =
+      state.pendingTransactionReference || createClientPaymentReference();
+    dispatch(setPendingTransactionReference(reference));
+
+    const result = await processPaymentApi({
+      reference,
+      productId: state.selectedProduct.id,
+      quantity: state.quantity,
+      card: state.creditCard,
+      delivery: state.deliveryInfo,
+    });
+
+    if (!result.ok) {
+      return { success: false, error: result.error };
+    }
+
+    dispatch(setPendingTransactionReference(result.value.transactionNumber));
+    return { success: true, data: result.value };
   },
 );
 
@@ -159,29 +153,31 @@ export const processPayment = createAsyncThunk(
  */
 export const syncTransactionStatus = createAsyncThunk(
   "payment/sync",
-  async (reference: string): Promise<AsyncResult<TransactionResult>> => {
-    try {
-      const response = await fetch(
-        `/api/transactions/reference/${reference}/sync`,
-      );
-      const data = await response.json();
-      if (data.success && data.transaction) {
-        return {
-          success: true,
-          data: {
-            id: data.transaction.id,
-            transactionNumber: data.transaction.reference,
-            status: data.transaction.status,
-            amount: data.transaction.totalAmount,
-            externalTransactionId: data.transaction.externalTransactionId,
-            errorMessage: data.transaction.errorMessage,
-          },
-        };
-      }
-      return { success: false, error: "No se pudo sincronizar la transacción" };
-    } catch (err) {
-      return { success: false, error: "Error de red al sincronizar" };
+  async (
+    reference: string | undefined,
+    { getState },
+  ): Promise<AsyncResult<TransactionResult>> => {
+    const state = (getState() as { payment: PaymentState }).payment;
+    const pendingReference =
+      reference ||
+      state.pendingTransactionReference ||
+      state.transactionResult?.transactionNumber;
+
+    if (!pendingReference) {
+      return {
+        success: false,
+        error: {
+          code: "INVALID_RESPONSE",
+          message: "No hay una transacción pendiente para sincronizar.",
+          retryable: false,
+        },
+      };
     }
+
+    const result = await syncTransactionStatusApi(pendingReference);
+    if (!result.ok) return { success: false, error: result.error };
+
+    return { success: true, data: result.value };
   },
 );
 
@@ -210,6 +206,12 @@ const paymentSlice = createSlice({
     ) => {
       state.transactionResult = action.payload;
     },
+    setPendingTransactionReference: (state, action: PayloadAction<string>) => {
+      state.pendingTransactionReference = action.payload;
+    },
+    clearPendingTransactionReference: (state) => {
+      state.pendingTransactionReference = null;
+    },
     setCurrentStep: (state, action: PayloadAction<Step>) => {
       state.currentStep = action.payload;
     },
@@ -226,20 +228,36 @@ const paymentSlice = createSlice({
       if (action.payload.success) {
         state.transactionResult = action.payload.data;
         state.currentStep = "result";
+        if (action.payload.data.status !== "PENDING") {
+          state.pendingTransactionReference = null;
+        }
       } else {
-        state.error = action.payload.error;
+        state.error = action.payload.error.message;
       }
+    });
+    builder.addCase(processPayment.rejected, (state) => {
+      state.isLoading = false;
+      state.error =
+        "No pudimos completar el pago en este momento. Inténtalo nuevamente.";
     });
 
     // Handle sync (recovery)
+    builder.addCase(syncTransactionStatus.pending, (state) => {
+      state.error = null;
+    });
     builder.addCase(syncTransactionStatus.fulfilled, (state, action) => {
       if (action.payload.success) {
         state.transactionResult = action.payload.data;
-        // If it's no longer pending, push to results
+        state.currentStep = "result";
         if (action.payload.data.status !== "PENDING") {
-          state.currentStep = "result";
+          state.pendingTransactionReference = null;
         }
+      } else {
+        state.error = action.payload.error.message;
       }
+    });
+    builder.addCase(syncTransactionStatus.rejected, (state) => {
+      state.error = "No pudimos actualizar el estado más reciente del pago.";
     });
   },
 });
@@ -249,6 +267,8 @@ export const {
   setCreditCard,
   setDeliveryInfo,
   setTransactionResult,
+  setPendingTransactionReference,
+  clearPendingTransactionReference,
   setCurrentStep,
   reset,
 } = paymentSlice.actions;
@@ -256,19 +276,15 @@ export const {
 // ── Persistence & Store Configuration ───────────────────────────────────────
 
 const persistConfig = {
-  key: "payment-store-v2",
-  storage: {
-    getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
-    setItem: (key: string, val: string) =>
-      Promise.resolve(localStorage.setItem(key, val)),
-    removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key)),
-  },
+  key: "payment-store-v3",
+  storage,
   whitelist: [
     "selectedProduct",
     "quantity",
     "creditCard",
     "deliveryInfo",
     "currentStep",
+    "pendingTransactionReference",
     "transactionResult",
   ],
 };

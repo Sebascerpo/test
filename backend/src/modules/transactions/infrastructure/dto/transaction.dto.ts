@@ -46,6 +46,12 @@ export class CardInfoDto {
 }
 
 export class ProcessPaymentDto {
+  @IsOptional()
+  @Matches(/^TX-[A-Z0-9-]{6,80}$/, {
+    message: 'Invalid transaction reference',
+  })
+  reference?: string;
+
   @IsString()
   productId: string;
 

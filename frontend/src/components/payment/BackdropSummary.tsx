@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   ArrowLeftIcon,
@@ -12,8 +12,9 @@ import {
   WifiOffIcon,
 } from "@/components/icons";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { processPayment, setCurrentStep } from "@/store/payment-store";
+import { processPayment } from "@/store/payment-store";
 import { motion, AnimatePresence } from "framer-motion";
+import { ValidationToast } from "@/components/ui/ValidationToast";
 
 const FEES = {
   baseFee: Number(import.meta.env.VITE_BASE_FEE || 2500),
@@ -70,6 +71,17 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
     error,
   } = useAppSelector((s) => s.payment);
   const [tapped, setTapped] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setToastMessage(
+        "Parece que perdiste la conexión. No te preocupes, tu carrito está guardado. Esperaremos a que vuelvas a estar en línea.",
+      );
+      return;
+    }
+    setToastMessage(null);
+  }, [isOnline]);
 
   if (!selectedProduct || !creditCard || !deliveryInfo) return null;
 
@@ -81,10 +93,13 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
     setTapped(true);
 
     // ── Step 1: Fire ROP-style API call via Thunk ────────────────────────────
-    await dispatch(processPayment());
+    const action = await dispatch(processPayment());
+    if (processPayment.fulfilled.match(action) && action.payload.success) {
+      onComplete();
+      return;
+    }
 
-    // Complete the step
-    onComplete();
+    setTapped(false);
   };
 
   return (
@@ -106,6 +121,11 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 32, stiffness: 320 }}
       >
+        <ValidationToast
+          message={toastMessage}
+          onClear={() => setToastMessage(null)}
+        />
+
         {/* Handle */}
         <div className="flex justify-center pt-3 flex-shrink-0">
           <div className="w-9 h-1 rounded-full bg-border" />
