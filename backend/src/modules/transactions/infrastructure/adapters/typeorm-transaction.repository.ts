@@ -94,9 +94,9 @@ export class TypeOrmTransactionRepository implements TransactionRepositoryPort {
       totalAmount: entity.totalAmount,
       status: entity.status,
       paymentMethod: entity.paymentMethod,
-      externalTransactionId: entity.externalTransactionId,
-      externalReference: entity.externalReference,
-      errorMessage: entity.errorMessage,
+      externalTransactionId: entity.externalTransactionId ?? undefined,
+      externalReference: entity.externalReference ?? undefined,
+      errorMessage: entity.errorMessage ?? undefined,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };

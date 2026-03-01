@@ -9,7 +9,7 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   createProcessPaymentUseCase,
   ProcessPaymentUseCase,
@@ -22,19 +22,20 @@ import {
   SyncTransactionStatusResult,
 } from '../../application/use-cases/sync-transaction-status.use-case';
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
-import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
-import { CustomerRepositoryPort } from '../../../customers/application/ports/customer.repository.port';
 import {
   PaymentGatewayPort,
   PaymentConfig,
 } from '../../../payment/application/ports/payment-gateway.port';
+import { PaymentProcessCoordinatorPort } from '../../application/ports/payment-process-coordinator.port';
 import {
   ProcessPaymentDto,
+  SyncTransactionResponseDto,
   TransactionResponseDto,
 } from '../dto/transaction.dto';
 import { match } from '../../../../shared/common/rop';
 
 @Controller('api')
+@ApiTags('transactions')
 export class TransactionsController {
   private readonly processPaymentUseCase: ProcessPaymentUseCase;
   private readonly syncTransactionStatusUseCase: SyncTransactionStatusUseCase;
@@ -42,31 +43,30 @@ export class TransactionsController {
   constructor(
     @Inject(TransactionRepositoryPort)
     private readonly transactionRepository: TransactionRepositoryPort,
-    @Inject(ProductRepositoryPort)
-    productRepository: ProductRepositoryPort,
-    @Inject(CustomerRepositoryPort)
-    customerRepository: CustomerRepositoryPort,
     @Inject(PaymentGatewayPort)
     paymentGateway: PaymentGatewayPort,
+    @Inject(PaymentProcessCoordinatorPort)
+    paymentCoordinator: PaymentProcessCoordinatorPort,
     private readonly paymentConfig: PaymentConfig,
-    private readonly dataSource: DataSource,
   ) {
     this.processPaymentUseCase = createProcessPaymentUseCase(
       transactionRepository,
-      productRepository,
-      customerRepository,
       paymentGateway,
       paymentConfig,
-      dataSource,
+      paymentCoordinator,
     );
     this.syncTransactionStatusUseCase = createSyncTransactionStatusUseCase(
       transactionRepository,
       paymentGateway,
-      dataSource,
+      paymentCoordinator,
     );
   }
 
   @Post('payment/process')
+  @ApiOperation({
+    summary:
+      'Process a payment: create local PENDING transaction, call gateway, finalize status',
+  })
   async process(
     @Body() dto: ProcessPaymentDto,
   ): Promise<TransactionResponseDto> {
@@ -106,6 +106,7 @@ export class TransactionsController {
           totalAmount: data.transaction.totalAmount,
           productId: data.transaction.productId,
           createdAt: data.transaction.createdAt,
+          deliveryId: data.deliveryId,
           externalTransactionId: data.transaction.externalTransactionId ?? '',
           errorMessage: data.transaction.errorMessage ?? '',
         },
@@ -113,7 +114,11 @@ export class TransactionsController {
       }),
       (error) => {
         throw new HttpException(
-          { success: false, message: error.message },
+          {
+            success: false,
+            code: 'PAYMENT_PROCESS_FAILED',
+            message: error.message,
+          },
           HttpStatus.BAD_REQUEST,
         );
       },
@@ -121,45 +126,67 @@ export class TransactionsController {
   }
 
   @Get('transactions')
+  @ApiOperation({ summary: 'List transactions' })
   async findAll() {
     const transactions = await this.transactionRepository.findAll();
     return { success: true, data: transactions };
   }
 
   @Get('transactions/:id')
+  @ApiOperation({ summary: 'Get transaction by id' })
   async findOne(@Param('id') id: string) {
     const transaction = await this.transactionRepository.findById(id);
     if (!transaction) {
-      throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        {
+          success: false,
+          code: 'TRANSACTION_NOT_FOUND',
+          message: 'Transaction not found',
+        },
+        HttpStatus.NOT_FOUND,
+      );
     }
     return { success: true, data: transaction };
   }
 
   @Get('transactions/reference/:reference')
+  @ApiOperation({ summary: 'Get transaction by reference' })
   async findByReference(@Param('reference') reference: string) {
     const transaction =
       await this.transactionRepository.findByReference(reference);
     if (!transaction) {
-      throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        {
+          success: false,
+          code: 'TRANSACTION_NOT_FOUND',
+          message: 'Transaction not found',
+        },
+        HttpStatus.NOT_FOUND,
+      );
     }
     return { success: true, data: transaction };
   }
 
   @Get('transactions/reference/:reference/sync')
+  @ApiOperation({
+    summary:
+      'Sync transaction status with payment gateway; returns retryable 200 for not-visible-yet states',
+  })
   async syncByReference(@Param('reference') reference: string) {
     const result = await this.syncTransactionStatusUseCase(reference);
 
-    return match<SyncTransactionStatusResult, Error, any>(
+    return match<SyncTransactionStatusResult, Error, SyncTransactionResponseDto>(
       (data) => ({
         success: true,
         transaction: data.transaction,
         updated: data.updated,
         retryable: data.retryable ?? false,
         reason: data.reason ?? null,
+        deliveryId: data.deliveryId,
       }),
       (error) => {
         throw new HttpException(
-          { success: false, message: error.message },
+          { success: false, code: 'TRANSACTION_SYNC_FAILED', message: error.message },
           HttpStatus.BAD_REQUEST,
         );
       },

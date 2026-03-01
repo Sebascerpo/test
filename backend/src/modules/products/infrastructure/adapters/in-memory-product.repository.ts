@@ -1,5 +1,5 @@
 // Infrastructure Adapter - In-Memory Product Repository
-import { Product, ProductStock } from '../../domain/product.entity';
+import { Product } from '../../domain/product.entity';
 import { ProductRepositoryPort } from '../../application/ports/product.repository.port';
 
 // Seed data for products

@@ -7,6 +7,9 @@ import { TransactionOrmEntity } from './infrastructure/adapters/transaction.orm-
 import { ProductsModule } from '../products/products.module';
 import { CustomersModule } from '../customers/customers.module';
 import { PaymentModule } from '../payment/payment.module';
+import { PaymentProcessCoordinatorPort } from './application/ports/payment-process-coordinator.port';
+import { PaymentProcessCoordinator } from './infrastructure/adapters/payment-process.coordinator';
+import { DeliveriesModule } from '../deliveries/deliveries.module';
 
 @Module({
   imports: [
@@ -14,6 +17,7 @@ import { PaymentModule } from '../payment/payment.module';
     ProductsModule,
     CustomersModule,
     PaymentModule,
+    DeliveriesModule,
   ],
   controllers: [TransactionsController],
   providers: [
@@ -21,7 +25,11 @@ import { PaymentModule } from '../payment/payment.module';
       provide: TransactionRepositoryPort,
       useClass: TypeOrmTransactionRepository,
     },
+    {
+      provide: PaymentProcessCoordinatorPort,
+      useClass: PaymentProcessCoordinator,
+    },
   ],
-  exports: [TransactionRepositoryPort],
+  exports: [TransactionRepositoryPort, PaymentProcessCoordinatorPort],
 })
 export class TransactionsModule {}

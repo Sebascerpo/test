@@ -54,14 +54,14 @@ export class TransactionOrmEntity {
   })
   paymentMethod: PaymentMethod;
 
-  @Column({ name: 'external_transaction_id', nullable: true })
-  externalTransactionId: string;
+  @Column({ type: 'varchar', name: 'external_transaction_id', nullable: true })
+  externalTransactionId: string | null;
 
-  @Column({ name: 'external_reference', nullable: true })
-  externalReference: string;
+  @Column({ type: 'varchar', name: 'external_reference', nullable: true })
+  externalReference: string | null;
 
   @Column({ name: 'error_message', type: 'text', nullable: true })
-  errorMessage: string;
+  errorMessage: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

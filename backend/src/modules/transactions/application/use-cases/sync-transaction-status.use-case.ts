@@ -1,20 +1,18 @@
-// Use Case: Sync Transaction Status with Wompi
 import { ResultAsync, ok, err } from '../../../../shared/common/rop';
+import { PaymentGatewayPort } from '../../../payment/application/ports/payment-gateway.port';
+import { PaymentProcessCoordinatorPort } from '../ports/payment-process-coordinator.port';
 import {
   Transaction,
   TransactionStatus,
 } from '../../domain/transaction.entity';
 import { TransactionRepositoryPort } from '../ports/transaction.repository.port';
-import { PaymentGatewayPort } from '../../../payment/application/ports/payment-gateway.port';
-import { DataSource } from 'typeorm';
-import { ProductOrmEntity } from '../../../products/infrastructure/adapters/product.orm-entity';
-import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
 
 export interface SyncTransactionStatusResult {
   transaction: Transaction | null;
   updated: boolean;
   retryable?: boolean;
   reason?: 'NOT_FOUND_YET';
+  deliveryId?: string;
 }
 
 export type SyncTransactionStatusUseCase = (
@@ -24,18 +22,14 @@ export type SyncTransactionStatusUseCase = (
 export const createSyncTransactionStatusUseCase = (
   transactionRepository: TransactionRepositoryPort,
   paymentGateway: PaymentGatewayPort,
-  dataSource: DataSource,
+  paymentCoordinator: PaymentProcessCoordinatorPort,
 ): SyncTransactionStatusUseCase => {
   return async (
     idOrReference: string,
   ): ResultAsync<SyncTransactionStatusResult> => {
     try {
-      // 1. Find transaction (try by reference first, then id)
-      let transaction =
-        await transactionRepository.findByReference(idOrReference);
-
+      let transaction = await transactionRepository.findByReference(idOrReference);
       if (!transaction) {
-        // Only try findById if it looks like a UUID
         const uuidRegex =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (uuidRegex.test(idOrReference)) {
@@ -44,7 +38,6 @@ export const createSyncTransactionStatusUseCase = (
       }
 
       if (!transaction) {
-        console.warn(`[SYNC] Transaction not found for: ${idOrReference}`);
         return ok({
           transaction: null,
           updated: false,
@@ -53,7 +46,6 @@ export const createSyncTransactionStatusUseCase = (
         });
       }
 
-      // 2. Only sync if PENDING and has external ID
       if (
         transaction.status !== TransactionStatus.PENDING ||
         !transaction.externalTransactionId
@@ -61,21 +53,15 @@ export const createSyncTransactionStatusUseCase = (
         return ok({ transaction, updated: false });
       }
 
-      // 3. Get latest status from Wompi
       const externalStatusResult = await paymentGateway.getTransactionStatus(
         transaction.externalTransactionId,
       );
-
       if (!externalStatusResult.success) {
-        // If it fails to fetch, we just return the current state
         return ok({ transaction, updated: false });
       }
 
-      const externalStatus = externalStatusResult.value.status;
-
-      // Map Wompi status to our TransactionStatus
       let newStatus: TransactionStatus;
-      switch (externalStatus) {
+      switch (externalStatusResult.value.status) {
         case 'APPROVED':
           newStatus = TransactionStatus.APPROVED;
           break;
@@ -94,60 +80,18 @@ export const createSyncTransactionStatusUseCase = (
         return ok({ transaction, updated: false });
       }
 
-      // 4. Update transaction status in DB
-      const queryRunner = dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
+      const finalized = await paymentCoordinator.finalizePayment({
+        transactionId: transaction.id,
+        status: newStatus,
+      });
+      if (!finalized.success) return err(finalized.error);
 
-      try {
-        const transactionEntity = await queryRunner.manager.findOne(
-          TransactionOrmEntity,
-          {
-            where: { id: transaction.id },
-          },
-        );
-
-        if (!transactionEntity) {
-          throw new Error('Transaction entity not found in DB');
-        }
-
-        transactionEntity.status = newStatus;
-        await queryRunner.manager.save(transactionEntity);
-
-        // 5. If APPROVED, decrement stock
-        if (newStatus === TransactionStatus.APPROVED) {
-          const productEntity = await queryRunner.manager.findOne(
-            ProductOrmEntity,
-            {
-              where: { id: transaction.productId },
-            },
-          );
-          if (productEntity) {
-            productEntity.stock -= transaction.quantity;
-            await queryRunner.manager.save(productEntity);
-          }
-        }
-
-        await queryRunner.commitTransaction();
-
-        // Update the original object for response
-        transaction.status = newStatus;
-
-        console.log(
-          `[SYNC] Transaction ${transaction.reference} updated to ${newStatus}`,
-        );
-
-        return ok({ transaction, updated: true });
-      } catch (e: unknown) {
-        if (queryRunner.isTransactionActive) {
-          await queryRunner.rollbackTransaction();
-        }
-        const msg = e instanceof Error ? e.message : String(e);
-        return err(new Error(`Sync update failed: ${msg}`));
-      } finally {
-        await queryRunner.release();
-      }
-    } catch (e: any) {
+      return ok({
+        transaction: finalized.value.transaction,
+        updated: true,
+        deliveryId: finalized.value.deliveryId,
+      });
+    } catch (e) {
       return err(e instanceof Error ? e : new Error(String(e)));
     }
   };

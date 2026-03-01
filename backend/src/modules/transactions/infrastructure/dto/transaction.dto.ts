@@ -6,7 +6,9 @@ import {
   Min,
   IsOptional,
   Matches,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class DeliveryInfoDto {
   @IsString()
@@ -59,8 +61,12 @@ export class ProcessPaymentDto {
   @Min(1)
   quantity: number;
 
+  @ValidateNested()
+  @Type(() => DeliveryInfoDto)
   deliveryInfo: DeliveryInfoDto;
 
+  @ValidateNested()
+  @Type(() => CardInfoDto)
   cardInfo: CardInfoDto;
 }
 
@@ -76,10 +82,20 @@ export class TransactionResponseDto {
     totalAmount: number;
     productId: string;
     createdAt: Date;
+    deliveryId?: string;
     externalTransactionId?: string;
     errorMessage?: string;
   };
   message: string;
+}
+
+export class SyncTransactionResponseDto {
+  success: boolean;
+  transaction: TransactionResponseDto['transaction'] | null;
+  updated: boolean;
+  retryable?: boolean;
+  reason?: 'NOT_FOUND_YET' | null;
+  deliveryId?: string;
 }
 
 export class CreateTransactionDto {

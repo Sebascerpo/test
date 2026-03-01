@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   createGetAllProductsUseCase,
   GetAllProductsUseCase,
@@ -15,6 +16,7 @@ import { ProductRepositoryPort } from '../../application/ports/product.repositor
 import { match } from '../../../../shared/common/rop';
 
 @Controller('api/products')
+@ApiTags('products')
 export class ProductsController {
   private readonly getAllProductsUseCase: GetAllProductsUseCase;
 
@@ -26,6 +28,7 @@ export class ProductsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List products with current stock' })
   async findAll() {
     const result = await this.getAllProductsUseCase();
 
@@ -33,7 +36,11 @@ export class ProductsController {
       (products) => ({ success: true, data: products }),
       (error) => {
         throw new HttpException(
-          error.message,
+          {
+            success: false,
+            code: 'PRODUCTS_FETCH_FAILED',
+            message: error.message,
+          },
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       },
@@ -41,10 +48,14 @@ export class ProductsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a product by id' })
   async findOne(@Param('id') id: string) {
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw new HttpException('Product not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        { success: false, code: 'PRODUCT_NOT_FOUND', message: 'Product not found' },
+        HttpStatus.NOT_FOUND,
+      );
     }
     return { success: true, data: product };
   }
