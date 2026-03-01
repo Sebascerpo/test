@@ -4,7 +4,9 @@ import {
   Product,
   TransactionResult,
 } from "@/store/payment-store";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { PackageIcon } from "@/components/icons";
+import { transitions } from "@/lib/motion";
 
 const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
 
@@ -30,6 +32,7 @@ export function TransactionDetailsCard({
   cardPreview,
   deliveryInfo,
 }: TransactionDetailsCardProps) {
+  const shouldReduceMotion = useReducedMotion();
   const isDeclined =
     transaction.status === "DECLINED" ||
     transaction.status === "ERROR" ||
@@ -38,15 +41,15 @@ export function TransactionDetailsCard({
   return (
     <motion.div
       className="w-full max-w-sm mt-6 mx-auto"
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
     >
-      <div className="rounded-2xl border border-border overflow-hidden bg-background shadow-premium">
+      <div className="rounded-2xl border border-border overflow-hidden bg-background surface-elevated shadow-premium">
         {selectedProduct && (
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
-            <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-              📦
+            <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 border border-border/60">
+              <PackageIcon size={16} className="text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">

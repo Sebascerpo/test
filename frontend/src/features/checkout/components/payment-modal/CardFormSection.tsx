@@ -1,8 +1,9 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { CheckIcon, LockIcon } from "@/components/icons";
 import { CardBrand, validateCardNumber } from "@/store/payment-store";
 import { CreditCardPreview } from "@/features/checkout/components/CreditCardPreview";
+import { transitions } from "@/lib/motion";
 
 interface FieldProps {
   label: string;
@@ -60,13 +61,15 @@ export function CardFormSection({
   onExpiryChange,
   onCvcChange,
 }: CardFormSectionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.div
       key="card-pane"
-      initial={{ opacity: 0, x: -16 }}
+      initial={{ opacity: 0, x: shouldReduceMotion ? 0 : -16 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 16 }}
-      transition={{ duration: 0.18 }}
+      exit={{ opacity: 0, x: shouldReduceMotion ? 0 : 16 }}
+      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
       className="px-5 py-4 space-y-4"
     >
       <CreditCardPreview

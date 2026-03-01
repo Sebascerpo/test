@@ -13,8 +13,9 @@ import {
 } from "@/components/icons";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { processPayment } from "@/store/payment-store";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ValidationToast } from "@/components/ui/ValidationToast";
+import { transitions } from "@/lib/motion";
 
 const FEES = {
   baseFee: Number(import.meta.env.VITE_BASE_FEE || 2500),
@@ -61,6 +62,7 @@ function Row({
 export function BackdropSummary({ onBack }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
   const { isOnline } = useNetworkStatus();
+  const shouldReduceMotion = useReducedMotion();
   const {
     selectedProduct,
     quantity,
@@ -109,18 +111,19 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
     >
       {/* Scrim */}
       <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
 
       {/* Sheet */}
       <motion.div
-        className="relative bg-background rounded-t-[24px] shadow-2xl flex flex-col overflow-hidden"
+        className="relative bg-background rounded-t-[24px] shadow-premium border-t border-border flex flex-col overflow-hidden"
         style={{ maxHeight: "92svh" }}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 32, stiffness: 320 }}
+        transition={transitions.sheetSpring(!!shouldReduceMotion)}
       >
         <ValidationToast
           message={toastMessage}
@@ -133,7 +136,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
         </div>
 
         {/* Header */}
-        <div className="flex-shrink-0 px-5 pt-3 pb-4 border-b border-border flex items-center justify-between">
+        <div className="flex-shrink-0 px-5 pt-3 pb-4 border-b border-border surface-1 flex items-center justify-between">
           <div>
             <p className="sc-label">Confirmar pedido</p>
             <h2 className="text-[17px] font-semibold tracking-tight">
@@ -142,7 +145,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           </div>
           <button
             onClick={onBack}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 [transition-timing-function:var(--ease-smooth)] active:scale-[0.98]"
           >
             <ArrowLeftIcon size={13} />
             Editar
@@ -207,7 +210,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           </div>
 
           {/* Breakdown */}
-          <div className="rounded-2xl border border-border px-4 py-1">
+          <div className="rounded-2xl border border-border px-4 py-1 surface-elevated shadow-xs">
             <Row
               label={`Producto (${quantity})`}
               value={fmt(selectedProduct.price * quantity)}
@@ -218,7 +221,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           </div>
 
           {/* Trust */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 pb-1">
             {["Pago seguro", "SSL 256-bit", "Datos cifrados"].map((t) => (
               <div key={t} className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded-full bg-foreground flex items-center justify-center">
@@ -231,7 +234,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-5 py-4 border-t border-border bg-background">
+        <div className="flex-shrink-0 px-5 py-4 border-t border-border surface-1 bg-background">
           <div className="flex items-center justify-center gap-1.5 mb-3">
             <ShieldCheckIcon size={11} className="text-muted-foreground" />
             <p className="text-[11px] text-muted-foreground">
@@ -259,6 +262,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                transition={transitions.enterFadeUp(!!shouldReduceMotion)}
                 className="text-center text-[11px] text-red-500 mb-2 font-medium"
               >
                 {error}
@@ -268,6 +272,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                transition={transitions.enterFadeUp(!!shouldReduceMotion)}
                 className="text-center text-[11px] text-amber-600 mb-2 font-medium"
               >
                 Por seguridad debes reingresar número de tarjeta y CVC antes de
@@ -279,8 +284,12 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           <motion.button
             onClick={handlePay}
             disabled={tapped || !isOnline || isLoading}
-            className={`sc-btn-primary ${!isOnline || tapped || isLoading ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
-            whileTap={isOnline && !isLoading ? { scale: 0.98 } : {}}
+            className={`sc-btn-primary ${!isOnline || tapped || isLoading ? "opacity-50 cursor-not-allowed grayscale" : ""} ${isOnline && !isLoading ? "hover:brightness-[1.03]" : ""}`}
+            whileTap={
+              isOnline && !isLoading && !shouldReduceMotion
+                ? transitions.buttonPress
+                : {}
+            }
           >
             {isLoading ? (
               <RefreshIcon size={15} className="animate-spin" />

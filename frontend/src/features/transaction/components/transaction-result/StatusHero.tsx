@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { transitions } from "@/lib/motion";
 
 interface StatusHeroProps {
   status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR";
@@ -30,6 +31,7 @@ function StatusGlyph({ status }: { status: StatusHeroProps["status"] }) {
 }
 
 export function StatusHero({ status, isOnline }: StatusHeroProps) {
+  const shouldReduceMotion = useReducedMotion();
   const isPending = status === "PENDING";
   const isApproved = status === "APPROVED";
   const isDeclined =
@@ -39,8 +41,9 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
     <div className="w-full flex flex-col items-center relative">
       {!isOnline && isPending && (
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
+          initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={transitions.enterFadeUp(!!shouldReduceMotion)}
           className="mb-4 px-4 py-2 rounded-full bg-orange-500/10 text-orange-600 text-[11px] font-semibold border border-orange-500/20"
         >
           Sin conexión: seguiremos verificando automáticamente al reconectarte.
@@ -75,10 +78,10 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
                   opacity: 0,
                 }}
                 transition={{
-                  duration: 2,
+                  duration: shouldReduceMotion ? 0.15 : 2,
                   delay: idx * 0.45,
-                  repeat: Infinity,
-                  ease: "easeOut",
+                  repeat: shouldReduceMotion ? 0 : Infinity,
+                  ease: [0.2, 0, 0, 1],
                 }}
               />
             ))}
@@ -92,9 +95,17 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
           <motion.div
             className="absolute top-9 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full bg-emerald-500/20 blur-2xl pointer-events-none"
             initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: [0.3, 0.9, 0.4], scale: [0.9, 1.12, 0.96] }}
+            animate={
+              shouldReduceMotion
+                ? { opacity: 0.5, scale: 1 }
+                : { opacity: [0.3, 0.9, 0.4], scale: [0.9, 1.12, 0.96] }
+            }
             exit={{ opacity: 0 }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            transition={{
+              duration: shouldReduceMotion ? 0.15 : 2.2,
+              repeat: shouldReduceMotion ? 0 : Infinity,
+              ease: [0.2, 0, 0, 1],
+            }}
           />
         )}
       </AnimatePresence>
@@ -102,7 +113,7 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={
-          isDeclined
+          isDeclined && !shouldReduceMotion
             ? {
                 scale: 1,
                 opacity: 1,
@@ -111,10 +122,10 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
             : { scale: 1, opacity: 1, x: 0 }
         }
         transition={{
-          type: "spring",
-          damping: 16,
-          stiffness: 220,
-          ...(isDeclined ? { duration: 0.45 } : {}),
+          ...(shouldReduceMotion
+            ? { duration: 0.15, ease: [0.2, 0, 0, 1] }
+            : { type: "spring", damping: 16, stiffness: 220 }),
+          ...(isDeclined && !shouldReduceMotion ? { duration: 0.45 } : {}),
         }}
       >
         <StatusGlyph status={status} />
@@ -122,8 +133,9 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
 
       <motion.h1
         className="text-[27px] font-semibold tracking-tight leading-tight text-foreground text-center mt-5"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.04)}
       >
         {isApproved
           ? "¡Pago aprobado!"
@@ -136,6 +148,7 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
         className="text-sm mt-2 max-w-[280px] text-center text-muted-foreground leading-relaxed"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.07)}
       >
         {isApproved
           ? "Tu transacción fue procesada exitosamente."

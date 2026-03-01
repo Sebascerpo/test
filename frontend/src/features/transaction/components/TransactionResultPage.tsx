@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAppSelector } from "@/store/hooks";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { StatusHero } from "@/features/transaction/components/transaction-result/StatusHero";
 import { TransactionDetailsCard } from "@/features/transaction/components/transaction-result/TransactionDetailsCard";
 import { ResultActions } from "@/features/transaction/components/transaction-result/ResultActions";
+import { transitions } from "@/lib/motion";
 
 interface TransactionResultPageProps {
   onDismiss: (options: {
@@ -21,6 +22,7 @@ export function TransactionResultPage({
   onDismiss,
 }: TransactionResultPageProps) {
   const { isOnline } = useNetworkStatus();
+  const shouldReduceMotion = useReducedMotion();
   const {
     pendingTransactionReference,
     transactionResult,
@@ -98,7 +100,8 @@ export function TransactionResultPage({
       className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-background px-5 pt-14 pb-10"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      exit={{ opacity: 0, transition: transitions.enterFadeUp(!!shouldReduceMotion) }}
+      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
     >
       <motion.div
         className={`pointer-events-none fixed inset-0 -z-10 ${
@@ -111,26 +114,42 @@ export function TransactionResultPage({
         animate={{
           opacity: [0.25, 0.5, 0.25],
         }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        transition={
+          shouldReduceMotion
+            ? { duration: 0.2 }
+            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+        }
       />
 
       <StatusHero status={effectiveTransaction.status} isOnline={isOnline} />
 
-      <TransactionDetailsCard
-        transaction={effectiveTransaction}
-        selectedProduct={selectedProduct}
-        quantity={quantity}
-        cardPreview={cardPreview}
-        deliveryInfo={deliveryInfo}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.05)}
+      >
+        <TransactionDetailsCard
+          transaction={effectiveTransaction}
+          selectedProduct={selectedProduct}
+          quantity={quantity}
+          cardPreview={cardPreview}
+          deliveryInfo={deliveryInfo}
+        />
+      </motion.div>
 
-      <ResultActions
-        isPending={isPending}
-        countdown={countdown}
-        autoRedirectEnabled={autoRedirectEnabled}
-        onToggleAutoRedirect={() => setAutoRedirectEnabled((value) => !value)}
-        onGoToCatalog={goToCatalog}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.1)}
+      >
+        <ResultActions
+          isPending={isPending}
+          countdown={countdown}
+          autoRedirectEnabled={autoRedirectEnabled}
+          onToggleAutoRedirect={() => setAutoRedirectEnabled((value) => !value)}
+          onGoToCatalog={goToCatalog}
+        />
+      </motion.div>
 
       <p className="flex items-center justify-center gap-1.5 text-[11px] mt-6 text-muted-foreground">
         <svg

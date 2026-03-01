@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { CheckIcon, TruckIcon, UserIcon } from "@/components/icons";
 import {
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { transitions } from "@/lib/motion";
 
 interface FieldProps {
   label: string;
@@ -76,6 +77,8 @@ export function DeliveryFormSection({
   values,
   onChange,
 }: DeliveryFormSectionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   const setValue = <K extends keyof DeliveryFormValues>(
     key: K,
     value: DeliveryFormValues[K],
@@ -86,10 +89,10 @@ export function DeliveryFormSection({
   return (
     <motion.div
       key="delivery-pane"
-      initial={{ opacity: 0, x: 16 }}
+      initial={{ opacity: 0, x: shouldReduceMotion ? 0 : 16 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -16 }}
-      transition={{ duration: 0.18 }}
+      exit={{ opacity: 0, x: shouldReduceMotion ? 0 : -16 }}
+      transition={transitions.enterFadeUp(!!shouldReduceMotion)}
       className="px-5 py-4 space-y-3.5"
     >
       <form

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   Product,
@@ -30,6 +30,7 @@ import {
   DeliveryFormValues,
 } from "@/features/checkout/components/payment-modal/DeliveryFormSection";
 import { ModalFooter } from "@/features/checkout/components/payment-modal/ModalFooter";
+import { transitions } from "@/lib/motion";
 
 interface PaymentModalProps {
   open: boolean;
@@ -52,6 +53,7 @@ export function PaymentModal({
   onComplete,
 }: PaymentModalProps) {
   const dispatch = useAppDispatch();
+  const shouldReduceMotion = useReducedMotion();
   const {
     cardPreview,
     deliveryInfo: savedDelivery,
@@ -260,6 +262,7 @@ export function PaymentModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion)}
       >
         <ValidationToast
           message={toastMessage}
@@ -272,18 +275,18 @@ export function PaymentModal({
         />
 
         <motion.div
-          className="relative bg-background rounded-t-[24px] shadow-2xl flex flex-col overflow-hidden"
+          className="relative bg-background rounded-t-[24px] shadow-premium flex flex-col overflow-hidden border-t border-border"
           style={{ maxHeight: "95svh" }}
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 32, stiffness: 320 }}
+          transition={transitions.sheetSpring(!!shouldReduceMotion)}
         >
           <div className="flex justify-center pt-3 flex-shrink-0">
             <div className="w-9 h-1 rounded-full bg-border" />
           </div>
 
-          <div className="flex-shrink-0 px-5 pt-3 pb-4 border-b border-border">
+          <div className="flex-shrink-0 px-5 pt-3 pb-4 border-b border-border surface-1">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1 min-w-0 pr-3">
                 <p className="sc-label">Completar compra</p>
@@ -296,13 +299,13 @@ export function PaymentModal({
               </div>
               <button
                 onClick={() => onOpenChange(false)}
-                className="w-8 h-8 rounded-full bg-muted hover:bg-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
+                className="w-8 h-8 rounded-full bg-muted hover:bg-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-150 [transition-timing-function:var(--ease-smooth)] active:scale-[0.94]"
               >
                 <XIcon size={14} />
               </button>
             </div>
 
-            <div className="flex gap-1 bg-muted p-1 rounded-xl">
+            <div className="flex gap-1 bg-muted p-1 rounded-xl border border-border/60">
               {(["card", "delivery"] as const).map((entryTab) => (
                 <button
                   key={entryTab}
@@ -310,9 +313,9 @@ export function PaymentModal({
                     if (entryTab === "delivery" && !cardValid()) return;
                     setTab(entryTab);
                   }}
-                  className={`flex-1 h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  className={`flex-1 h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-150 [transition-timing-function:var(--ease-smooth)] active:scale-[0.98] ${
                     tab === entryTab
-                      ? "bg-background text-foreground shadow-sm"
+                      ? "bg-background text-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -362,6 +365,7 @@ export function PaymentModal({
             tab={tab}
             onContinue={handleContinue}
             onBackToCard={() => setTab("card")}
+            shouldReduceMotion={!!shouldReduceMotion}
           />
         </motion.div>
       </motion.div>

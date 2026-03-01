@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { AlertCircleIcon } from "@/components/icons";
+import { transitions } from "@/lib/motion";
 
 interface ValidationToastProps {
   message: string | null;
@@ -9,15 +10,27 @@ interface ValidationToastProps {
 }
 
 export function ValidationToast({ message, onClear }: ValidationToastProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <AnimatePresence>
       {message && (
         <motion.div
           className="validation-toast"
-          initial={{ opacity: 0, y: 20, scale: 0.95, x: "-50%" }}
+          initial={{
+            opacity: 0,
+            y: shouldReduceMotion ? 0 : 20,
+            scale: shouldReduceMotion ? 1 : 0.95,
+            x: "-50%",
+          }}
           animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
-          exit={{ opacity: 0, y: 10, scale: 0.98, x: "-50%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 350 }}
+          exit={{
+            opacity: 0,
+            y: shouldReduceMotion ? 0 : 10,
+            scale: shouldReduceMotion ? 1 : 0.98,
+            x: "-50%",
+          }}
+          transition={transitions.enterFadeUp(!!shouldReduceMotion)}
         >
           <div className="toast-content relative overflow-hidden">
             {/* Progress bar for auto-hide */}

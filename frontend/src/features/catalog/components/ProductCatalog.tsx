@@ -10,7 +10,8 @@ import {
   TruckIcon,
   StarIcon,
 } from "@/components/icons";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { transitions } from "@/lib/motion";
 
 interface ProductCatalogProps {
   onSelectProduct?: () => void;
@@ -43,6 +44,7 @@ function StockBar({ stock }: { stock: number }) {
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className={`h-full rounded-full ${isLow ? "bg-orange-400" : "bg-emerald-500"}`}
         />
       </div>
@@ -52,14 +54,14 @@ function StockBar({ stock }: { stock: number }) {
 
 function ProductSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
-      <div className="aspect-[4/3] bg-muted" />
+    <div className="rounded-2xl border border-border surface-elevated overflow-hidden">
+      <div className="aspect-[4/3] bg-muted skeleton-shimmer" />
       <div className="p-4 space-y-3">
-        <div className="h-4 bg-muted rounded w-3/4" />
-        <div className="h-3 bg-muted rounded w-full" />
-        <div className="h-3 bg-muted rounded w-2/3" />
-        <div className="h-6 bg-muted rounded w-1/3 mt-2" />
-        <div className="h-10 bg-muted rounded-xl mt-3" />
+        <div className="h-4 bg-muted rounded w-3/4 skeleton-shimmer" />
+        <div className="h-3 bg-muted rounded w-full skeleton-shimmer" />
+        <div className="h-3 bg-muted rounded w-2/3 skeleton-shimmer" />
+        <div className="h-6 bg-muted rounded w-1/3 mt-2 skeleton-shimmer" />
+        <div className="h-10 bg-muted rounded-xl mt-3 skeleton-shimmer" />
       </div>
     </div>
   );
@@ -72,6 +74,7 @@ interface ProductCardProps {
 }
 function ProductCard({ product, index, onSelect }: ProductCardProps) {
   const [qty, setQty] = useState(1);
+  const shouldReduceMotion = useReducedMotion();
   const isOutOfStock = product.stock <= 0;
 
   const increment = (e: React.MouseEvent) => {
@@ -87,16 +90,12 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.4,
-        delay: index * 0.08,
-        ease: [0.23, 1, 0.32, 1],
-      }}
+      transition={transitions.listStagger(index, !!shouldReduceMotion)}
     >
       <article
-        className={`product-card group relative rounded-[22px] border border-border bg-card overflow-hidden flex flex-col ${
+        className={`product-card group relative rounded-[22px] border border-border surface-elevated overflow-hidden flex flex-col ${
           isOutOfStock ? "cursor-default" : "cursor-pointer"
         }`}
         onClick={() => !isOutOfStock && onSelect(product, qty)}
@@ -113,13 +112,13 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                 width={640}
                 height={480}
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out ${
+                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 [transition-timing-function:var(--ease-snappy)] ${
                   !isOutOfStock
                     ? "group-hover:scale-110"
                     : "grayscale opacity-80"
                 }`}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 [transition-timing-function:var(--ease-smooth)]" />
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -196,7 +195,7 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                   <button
                     onClick={decrement}
                     disabled={qty <= 1}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-90 transition-all disabled:opacity-20"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-[0.92] transition-all duration-150 [transition-timing-function:var(--ease-snappy)] disabled:opacity-20"
                   >
                     <span className="text-lg font-bold leading-none">−</span>
                   </button>
@@ -208,7 +207,7 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                   <button
                     onClick={increment}
                     disabled={qty >= product.stock}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-90 transition-all disabled:opacity-20"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-[0.92] transition-all duration-150 [transition-timing-function:var(--ease-snappy)] disabled:opacity-20"
                   >
                     <span className="text-lg font-bold leading-none">+</span>
                   </button>
@@ -222,7 +221,7 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
                   e.stopPropagation();
                   onSelect(product, qty);
                 }}
-                className="sc-btn-primary hover:shadow-xl transition-all duration-300"
+                className="sc-btn-primary hover:shadow-premium transition-all duration-300"
               >
                 Comprar ahora
                 <ZapIcon size={16} className="fill-current" />
@@ -242,6 +241,7 @@ export function ProductCatalog({
   refreshSignal = 0,
 }: ProductCatalogProps) {
   const dispatch = useAppDispatch();
+  const shouldReduceMotion = useReducedMotion();
   const { transactionResult } = useAppSelector((s) => s.payment);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,12 +279,12 @@ export function ProductCatalog({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8">
+    <div className="w-full max-w-6xl mx-auto px-4 py-8 md:py-10">
       {/* ── Page header ──────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion)}
         className="mb-8"
       >
         <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
@@ -292,15 +292,15 @@ export function ProductCatalog({
         </p>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight leading-none">
+            <h1 className="text-[2rem] sm:text-4xl font-semibold tracking-[-0.03em] leading-[0.98]">
               Nuestros Productos
             </h1>
-            <p className="text-muted-foreground text-sm mt-2">
+            <p className="text-muted-foreground text-sm mt-2 leading-relaxed max-w-xl">
               Tecnología de calidad con envío rápido a todo el país
             </p>
           </div>
           {/* Free shipping banner */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-border bg-muted/40 text-sm whitespace-nowrap self-start sm:self-auto">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-border surface-1 shadow-xs text-sm whitespace-nowrap self-start sm:self-auto">
             <TruckIcon size={14} className="text-foreground/60" />
             <span className="text-foreground/70 font-medium text-xs">
               Envío gratis desde $300.000
@@ -313,7 +313,7 @@ export function ProductCatalog({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.06)}
         className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8"
       >
         {[
@@ -324,7 +324,7 @@ export function ProductCatalog({
         ].map(({ icon: Icon, label, sub }, i) => (
           <div
             key={i}
-            className="flex items-center gap-2.5 p-3 rounded-xl border border-border bg-background"
+            className="flex items-center gap-2.5 p-3 rounded-xl border border-border surface-elevated shadow-xs"
           >
             <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
               <Icon size={14} className="text-foreground/60" />
@@ -339,7 +339,7 @@ export function ProductCatalog({
 
       {/* ── Products grid ────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {[...Array(3)].map((_, i) => (
             <ProductSkeleton key={i} />
           ))}
@@ -358,7 +358,7 @@ export function ProductCatalog({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           <AnimatePresence>
             {products.map((product, index) => (
               <ProductCard
@@ -377,7 +377,7 @@ export function ProductCatalog({
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={transitions.enterFadeUp(!!shouldReduceMotion, 0.2)}
           className="text-center text-[11px] text-muted-foreground mt-10 flex items-center justify-center gap-1.5"
         >
           <ShieldCheckIcon size={11} />

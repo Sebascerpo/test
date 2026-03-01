@@ -9,7 +9,8 @@ import { TransactionResultPage } from "@/features/transaction/components/Transac
 import { TransactionNotification } from "@/features/transaction/components/TransactionNotification";
 import { ShieldCheckIcon } from "@/components/icons";
 import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { transitions } from "@/lib/motion";
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -23,6 +24,7 @@ function AppContent() {
   } = useAppSelector((state) => state.payment);
 
   const { isOnline } = useNetworkStatus();
+  const shouldReduceMotion = useReducedMotion();
   usePendingTransactionRecovery();
 
   // Toast shown ONLY when user leaves result page — never on immediate completion
@@ -79,9 +81,10 @@ function AppContent() {
   }, [dispatch]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,oklch(0.985_0_0),transparent_58%)]" />
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="w-full border-b border-border bg-background/95 backdrop-blur sticky top-0 z-40">
+      <header className="w-full border-b border-border bg-background/92 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-foreground flex items-center justify-center">
@@ -110,11 +113,12 @@ function AppContent() {
         {/* Offline feedback */}
         {!isOnline && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full bg-orange-500/95 text-white text-xs font-medium shadow-xl backdrop-blur flex items-center gap-2"
+            transition={transitions.enterFadeUp(!!shouldReduceMotion)}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full bg-orange-500/95 text-white text-xs font-semibold shadow-premium backdrop-blur-md flex items-center gap-2.5 border border-orange-200/30"
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse-subtle" />
             Sin conexión — Verificaremos tu pago al volver
           </motion.div>
         )}
@@ -123,8 +127,8 @@ function AppContent() {
         <div
           className={
             showPaymentModal || showBackdrop
-              ? "pointer-events-none opacity-40 transition-opacity"
-              : "transition-opacity"
+              ? "pointer-events-none opacity-35 transition-opacity duration-200"
+              : "transition-opacity duration-200"
           }
         >
           <ProductCatalog
@@ -155,7 +159,7 @@ function AppContent() {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="w-full border-t border-border py-4">
+      <footer className="w-full border-t border-border py-4 bg-background/85 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="font-semibold text-sm">SEBASCERPO</span>

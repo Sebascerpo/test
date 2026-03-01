@@ -1,5 +1,8 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
+import { transitions } from "@/lib/motion";
+
 interface CreditCardPreviewProps {
   number: string;
   holderName: string;
@@ -15,6 +18,7 @@ export function CreditCardPreview({
   brand,
   isFlipped = false,
 }: CreditCardPreviewProps) {
+  const shouldReduceMotion = useReducedMotion();
   const displayNumber = number || "•••• •••• •••• ••••";
   const displayName = holderName || "NOMBRE DEL TITULAR";
   const displayExpiry = expiry || "MM/YY";
@@ -32,17 +36,31 @@ export function CreditCardPreview({
 
   return (
     <div className="perspective-1000 w-full max-w-xs mx-auto mb-4">
-      <div
+      <motion.div
         className={`relative w-full aspect-[1.586/1] transition-transform duration-700 transform-style-preserve-3d ${
           isFlipped ? "rotate-y-180" : ""
         }`}
         style={{ transformStyle: "preserve-3d" }}
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={transitions.enterFadeUp(!!shouldReduceMotion)}
       >
         {/* Front of card */}
-        <div
+        <motion.div
           className={`absolute inset-0 rounded-xl bg-gradient-to-br ${getBrandColors()} p-4 text-white shadow-xl backface-hidden`}
           style={{ backfaceVisibility: "hidden" }}
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : { backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : { duration: 7, repeat: Infinity, ease: [0.2, 0, 0, 1] }
+          }
         >
+          <div className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.3),transparent_40%)]" />
           {/* Card chip */}
           <div className="absolute top-4 left-4">
             <div
@@ -113,7 +131,7 @@ export function CreditCardPreview({
               <p className="text-xs tracking-wide">{displayExpiry}</p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Back of card (CVC side) */}
         <div
@@ -138,7 +156,7 @@ export function CreditCardPreview({
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
