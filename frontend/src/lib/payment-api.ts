@@ -1,7 +1,12 @@
 import type { DeliveryInfo, CreditCard, TransactionResult } from "@/store/payment-store";
 
 export interface ApiFailure {
-  code: "OFFLINE" | "NETWORK_DROPPED" | "HTTP_ERROR" | "INVALID_RESPONSE";
+  code:
+    | "OFFLINE"
+    | "NETWORK_DROPPED"
+    | "HTTP_ERROR"
+    | "INVALID_RESPONSE"
+    | "TRANSACTION_NOT_FOUND";
   message: string;
   retryable: boolean;
 }
@@ -112,6 +117,23 @@ export async function syncTransactionStatusApi(
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
+      const backendMessage = String(data?.message || "").toLowerCase();
+      const isNotFound =
+        response.status === 404 ||
+        backendMessage.includes("transaction not found") ||
+        backendMessage.includes("transacción no encontrada");
+      if (isNotFound) {
+        return {
+          ok: false,
+          error: {
+            code: "TRANSACTION_NOT_FOUND",
+            message:
+              "Aún no encontramos tu transacción. Seguiremos verificando automáticamente.",
+            retryable: true,
+          },
+        };
+      }
+
       return {
         ok: false,
         error: {
@@ -122,12 +144,34 @@ export async function syncTransactionStatusApi(
       };
     }
 
-    if (!data?.success || !data?.transaction) {
+    if (!data?.success) {
       return {
         ok: false,
         error: {
           code: "INVALID_RESPONSE",
           message: "No pudimos leer el estado de la transacción en la respuesta del servidor.",
+          retryable: true,
+        },
+      };
+    }
+
+    if (!data.transaction) {
+      if (data.retryable || data.reason === "NOT_FOUND_YET") {
+        return {
+          ok: false,
+          error: {
+            code: "TRANSACTION_NOT_FOUND",
+            message:
+              "Aún no encontramos tu transacción. Seguiremos verificando automáticamente.",
+            retryable: true,
+          },
+        };
+      }
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_RESPONSE",
+          message: "No recibimos una transacción válida para sincronizar.",
           retryable: true,
         },
       };

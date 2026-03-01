@@ -154,6 +154,8 @@ export class TransactionsController {
         success: true,
         transaction: data.transaction,
         updated: data.updated,
+        retryable: data.retryable ?? false,
+        reason: data.reason ?? null,
       }),
       (error) => {
         throw new HttpException(

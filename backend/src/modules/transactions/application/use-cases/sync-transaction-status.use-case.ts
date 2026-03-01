@@ -11,8 +11,10 @@ import { ProductOrmEntity } from '../../../products/infrastructure/adapters/prod
 import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
 
 export interface SyncTransactionStatusResult {
-  transaction: Transaction;
+  transaction: Transaction | null;
   updated: boolean;
+  retryable?: boolean;
+  reason?: 'NOT_FOUND_YET';
 }
 
 export type SyncTransactionStatusUseCase = (
@@ -43,7 +45,12 @@ export const createSyncTransactionStatusUseCase = (
 
       if (!transaction) {
         console.warn(`[SYNC] Transaction not found for: ${idOrReference}`);
-        return err(new Error('Transaction not found'));
+        return ok({
+          transaction: null,
+          updated: false,
+          retryable: true,
+          reason: 'NOT_FOUND_YET',
+        });
       }
 
       // 2. Only sync if PENDING and has external ID

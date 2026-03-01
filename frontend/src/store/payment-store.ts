@@ -71,6 +71,7 @@ interface PaymentState {
   creditCard: CreditCard | null;
   deliveryInfo: DeliveryInfo | null;
   pendingTransactionReference: string | null;
+  pendingStartedAt: number | null;
   transactionResult: TransactionResult | null;
   isLoading: boolean;
   error: string | null;
@@ -83,6 +84,7 @@ const initialState: PaymentState = {
   creditCard: null,
   deliveryInfo: null,
   pendingTransactionReference: null,
+  pendingStartedAt: null,
   transactionResult: null,
   isLoading: false,
   error: null,
@@ -207,10 +209,14 @@ const paymentSlice = createSlice({
       state.transactionResult = action.payload;
     },
     setPendingTransactionReference: (state, action: PayloadAction<string>) => {
+      if (state.pendingTransactionReference !== action.payload) {
+        state.pendingStartedAt = Date.now();
+      }
       state.pendingTransactionReference = action.payload;
     },
     clearPendingTransactionReference: (state) => {
       state.pendingTransactionReference = null;
+      state.pendingStartedAt = null;
     },
     setCurrentStep: (state, action: PayloadAction<Step>) => {
       state.currentStep = action.payload;
@@ -251,9 +257,30 @@ const paymentSlice = createSlice({
         state.currentStep = "result";
         if (action.payload.data.status !== "PENDING") {
           state.pendingTransactionReference = null;
+          state.pendingStartedAt = null;
         }
       } else {
         state.error = action.payload.error.message;
+        if (action.payload.error.code === "TRANSACTION_NOT_FOUND") {
+          const pendingAgeMs = state.pendingStartedAt
+            ? Date.now() - state.pendingStartedAt
+            : Number.MAX_SAFE_INTEGER;
+          const canStillRetry = pendingAgeMs < 120_000;
+          if (canStillRetry) {
+            state.currentStep = "result";
+            state.error =
+              "Estamos confirmando tu pago. Puede tardar unos segundos más.";
+            return;
+          }
+        }
+        if (!action.payload.error.retryable) {
+          state.pendingTransactionReference = null;
+          state.pendingStartedAt = null;
+          state.currentStep =
+            state.selectedProduct && state.creditCard && state.deliveryInfo
+              ? "summary"
+              : "product";
+        }
       }
     });
     builder.addCase(syncTransactionStatus.rejected, (state) => {
@@ -285,6 +312,7 @@ const persistConfig = {
     "deliveryInfo",
     "currentStep",
     "pendingTransactionReference",
+    "pendingStartedAt",
     "transactionResult",
   ],
 };
