@@ -1,49 +1,23 @@
-// Main Application Module
 import { Module } from '@nestjs/common';
-import { ProductsController } from './modules/products/infrastructure/adapters/products.controller';
-import { TransactionsController } from './modules/transactions/infrastructure/adapters/transactions.controller';
+import { ConfigModule } from '@nestjs/config';
+import { DatabaseModule } from './modules/shared/infrastructure/database.module';
+import { ProductsModule } from './modules/products/products.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
 import { HealthController } from './modules/shared/infrastructure/health.controller';
-import { InMemoryProductRepository } from './modules/products/infrastructure/adapters/in-memory-product.repository';
-import { InMemoryCustomerRepository } from './modules/customers/infrastructure/adapters/in-memory-customer.repository';
-import { InMemoryTransactionRepository } from './modules/transactions/infrastructure/adapters/in-memory-transaction.repository';
-import { PaymentGatewayAdapter } from './modules/payment/infrastructure/adapters/payment-gateway.adapter';
-import { ProductRepositoryPort } from './modules/products/application/ports/product.repository.port';
-import { CustomerRepositoryPort } from './modules/customers/application/ports/customer.repository.port';
-import { TransactionRepositoryPort } from './modules/transactions/application/ports/transaction.repository.port';
-import {
-  PaymentGatewayPort,
-  PaymentConfig,
-} from './modules/payment/application/ports/payment-gateway.port';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
-  controllers: [ProductsController, TransactionsController, HealthController],
-  providers: [
-    // Repository Adapters (Ports & Adapters Pattern)
-    {
-      provide: ProductRepositoryPort,
-      useClass: InMemoryProductRepository,
-    },
-    {
-      provide: CustomerRepositoryPort,
-      useClass: InMemoryCustomerRepository,
-    },
-    {
-      provide: TransactionRepositoryPort,
-      useClass: InMemoryTransactionRepository,
-    },
-    {
-      provide: PaymentGatewayPort,
-      useClass: PaymentGatewayAdapter,
-    },
-    {
-      provide: PaymentConfig,
-      useValue: {
-        publicKey: 'pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7',
-        privateKey: 'prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg',
-        baseUrl: 'https://api-sandbox.co.uat.wompi.dev/v1',
-        integrityKey: 'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp',
-      },
-    },
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    DatabaseModule,
+    ProductsModule,
+    CustomersModule,
+    TransactionsModule,
+    PaymentModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

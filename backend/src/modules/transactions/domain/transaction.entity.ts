@@ -18,6 +18,7 @@ export interface Transaction {
   amount: number;
   baseFee: number;
   deliveryFee: number;
+  quantity: number;
   totalAmount: number;
   status: TransactionStatus;
   paymentMethod: PaymentMethod;

@@ -9,10 +9,12 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import {
   createProcessPaymentUseCase,
   ProcessPaymentUseCase,
   ProcessPaymentInput,
+  ProcessPaymentResult,
 } from '../../application/use-cases/process-payment.use-case';
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
 import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
@@ -37,12 +39,14 @@ export class TransactionsController {
     customerRepository: CustomerRepositoryPort,
     @Inject(PaymentGatewayPort)
     paymentGateway: PaymentGatewayPort,
+    private readonly dataSource: DataSource,
   ) {
     this.processPaymentUseCase = createProcessPaymentUseCase(
       transactionRepository,
       productRepository,
       customerRepository,
       paymentGateway,
+      dataSource,
     );
   }
 
@@ -72,7 +76,7 @@ export class TransactionsController {
 
     const result = await this.processPaymentUseCase(input);
 
-    return match<any, any, any>(
+    return match<ProcessPaymentResult, Error, TransactionResponseDto>(
       (data) => ({
         success: true,
         transaction: {
@@ -85,8 +89,8 @@ export class TransactionsController {
           totalAmount: data.transaction.totalAmount,
           productId: data.transaction.productId,
           createdAt: data.transaction.createdAt,
-          externalTransactionId: data.transaction.externalTransactionId,
-          errorMessage: data.transaction.errorMessage,
+          externalTransactionId: data.transaction.externalTransactionId ?? '',
+          errorMessage: data.transaction.errorMessage ?? '',
         },
         message: data.message,
       }),

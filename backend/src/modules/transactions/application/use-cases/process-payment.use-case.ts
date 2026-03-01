@@ -38,177 +38,191 @@ const calculateFees = (amount: number, quantity: number) => {
   return { baseAmount, baseFee, deliveryFee, totalAmount };
 };
 
+import { DataSource } from 'typeorm';
+import { ProductOrmEntity } from '../../../products/infrastructure/adapters/product.orm-entity';
+import { CustomerOrmEntity } from '../../../customers/infrastructure/adapters/customer.orm-entity';
+import { TransactionOrmEntity } from '../../infrastructure/adapters/transaction.orm-entity';
+
 export const createProcessPaymentUseCase = (
   transactionRepository: TransactionRepositoryPort,
   productRepository: ProductRepositoryPort,
   customerRepository: CustomerRepositoryPort,
   paymentGateway: PaymentGatewayPort,
+  dataSource: DataSource,
 ): ProcessPaymentUseCase => {
   return async (input: ProcessPaymentInput) => {
-    // Step 1: Validate product availability (ROP)
-    const productResult = await (async () => {
-      try {
-        const product = await productRepository.findById(input.productId);
-        if (!product) {
-          return err(new Error('Product not found'));
-        }
-        if (product.stock < input.quantity) {
-          return err(new Error('Insufficient stock'));
-        }
-        return ok(product);
-      } catch (error) {
-        return err(
-          new Error(
-            `Failed to validate product: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          ),
-        );
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Step 1: Validate product availability with pessimistic locking
+      const productEntity = await queryRunner.manager.findOne(
+        ProductOrmEntity,
+        {
+          where: { id: input.productId },
+          lock: { mode: 'pessimistic_write' },
+        },
+      );
+
+      if (!productEntity) {
+        await queryRunner.rollbackTransaction();
+        return err(new Error('Product not found'));
       }
-    })();
 
-    if (!productResult.success) return productResult;
-
-    const product = productResult.value;
-    const fees = calculateFees(product.price, input.quantity);
-
-    // Step 2: Create or get customer (ROP)
-    const customerResult = await (async () => {
-      try {
-        let customer = await customerRepository.findByEmail(
-          input.deliveryInfo.email,
-        );
-        if (!customer) {
-          customer = await customerRepository.create(input.deliveryInfo);
-        }
-        return ok(customer);
-      } catch (error) {
-        return err(
-          new Error(
-            `Failed to create customer: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          ),
-        );
+      if (productEntity.stock < input.quantity) {
+        await queryRunner.rollbackTransaction();
+        return err(new Error('Insufficient stock'));
       }
-    })();
 
-    if (!customerResult.success) return customerResult;
+      const fees = calculateFees(productEntity.price, input.quantity);
 
-    const customer = customerResult.value;
+      // Step 2: Create or get customer
+      let customerEntity = await queryRunner.manager.findOne(
+        CustomerOrmEntity,
+        {
+          where: { email: input.deliveryInfo.email },
+        },
+      );
 
-    // Step 3: Create pending transaction (ROP)
-    const transactionResult = await (async () => {
-      try {
-        const transaction = await transactionRepository.create({
-          productId: input.productId,
-          customerId: customer.id,
-          amount: fees.baseAmount,
-          baseFee: fees.baseFee,
-          deliveryFee: fees.deliveryFee,
-          quantity: input.quantity,
+      if (!customerEntity) {
+        customerEntity = queryRunner.manager.create(CustomerOrmEntity, {
+          fullName: input.deliveryInfo.fullName,
+          email: input.deliveryInfo.email,
+          phone: input.deliveryInfo.phone,
+          address: input.deliveryInfo.address,
+          city: input.deliveryInfo.city,
+          postalCode: input.deliveryInfo.postalCode,
         });
-        return ok(transaction);
-      } catch (error) {
+        customerEntity = await queryRunner.manager.save(customerEntity);
+      }
+
+      // Step 3: Create pending transaction
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const reference = `TX-${timestamp}-${random}`;
+
+      let transactionEntity = queryRunner.manager.create(TransactionOrmEntity, {
+        reference,
+        productId: input.productId,
+        customerId: customerEntity.id,
+        amount: fees.baseAmount,
+        baseFee: fees.baseFee,
+        deliveryFee: fees.deliveryFee,
+        totalAmount: fees.totalAmount,
+        quantity: input.quantity,
+        status: TransactionStatus.PENDING,
+      });
+
+      transactionEntity = await queryRunner.manager.save(transactionEntity);
+
+      // Step 4: Tokenize card
+      const tokenResult = await paymentGateway.tokenizeCard(input.cardInfo);
+      if (!tokenResult.success) {
+        transactionEntity.status = TransactionStatus.ERROR;
+        transactionEntity.errorMessage = tokenResult.error.message;
+        await queryRunner.manager.save(transactionEntity);
+        await queryRunner.commitTransaction();
+        return err(
+          new Error(`Tokenization failed: ${tokenResult.error.message}`),
+        );
+      }
+
+      // Step 5: Create payment source
+      const paymentSourceResult = await paymentGateway.createPaymentSource({
+        type: 'CARD',
+        token: tokenResult.value.token,
+        customer_email: customerEntity.email,
+        acceptance_token: 'test_token',
+      });
+
+      if (!paymentSourceResult.success) {
+        transactionEntity.status = TransactionStatus.ERROR;
+        transactionEntity.errorMessage = paymentSourceResult.error.message;
+        await queryRunner.manager.save(transactionEntity);
+        await queryRunner.commitTransaction();
         return err(
           new Error(
-            `Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            `Failed to create payment source: ${paymentSourceResult.error.message}`,
           ),
         );
       }
-    })();
 
-    if (!transactionResult.success) return transactionResult;
+      // Step 6: Create External transaction
+      const externalTransactionResult = await paymentGateway.createTransaction({
+        amount_in_cents: fees.totalAmount,
+        currency: 'COP',
+        customer_email: customerEntity.email,
+        payment_source_id: paymentSourceResult.value.id,
+        reference: transactionEntity.reference,
+        signature: 'test_signature',
+      });
 
-    const transaction = transactionResult.value;
+      // Step 7: Final Status Update
+      const finalStatus = !externalTransactionResult.success
+        ? TransactionStatus.ERROR
+        : externalTransactionResult.value.status === 'APPROVED'
+          ? TransactionStatus.APPROVED
+          : externalTransactionResult.value.status === 'DECLINED'
+            ? TransactionStatus.DECLINED
+            : TransactionStatus.ERROR;
 
-    // Step 4: Tokenize card with External Provider (ROP)
-    const tokenResult = await paymentGateway.tokenizeCard(input.cardInfo);
-    if (!tokenResult.success) {
-      await transactionRepository.updateStatus(
-        transaction.id,
-        TransactionStatus.ERROR,
-        {
-          errorMessage: tokenResult.error.message,
-        },
-      );
-      return err(
-        new Error(`Tokenization failed: ${tokenResult.error.message}`),
-      );
-    }
+      transactionEntity.status = finalStatus;
+      if (externalTransactionResult.success) {
+        transactionEntity.externalTransactionId =
+          externalTransactionResult.value.id;
+        transactionEntity.externalReference =
+          externalTransactionResult.value.reference;
+      } else {
+        transactionEntity.errorMessage =
+          externalTransactionResult.error.message;
+      }
 
-    // Step 5: Create payment source (ROP)
-    const paymentSourceResult = await paymentGateway.createPaymentSource({
-      type: 'CARD',
-      token: tokenResult.value.token,
-      customer_email: customer.email,
-      acceptance_token: 'test_token',
-    });
+      // Update stock if approved
+      if (finalStatus === TransactionStatus.APPROVED) {
+        productEntity.stock -= input.quantity;
+        await queryRunner.manager.save(productEntity);
+      }
 
-    if (!paymentSourceResult.success) {
-      await transactionRepository.updateStatus(
-        transaction.id,
-        TransactionStatus.ERROR,
-        {
-          errorMessage: paymentSourceResult.error.message,
-        },
-      );
+      await queryRunner.manager.save(transactionEntity);
+      await queryRunner.commitTransaction();
+
+      // Map back to domain for response
+      const resultTransaction: Transaction = {
+        id: transactionEntity.id,
+        reference: transactionEntity.reference,
+        productId: transactionEntity.productId,
+        customerId: transactionEntity.customerId,
+        amount: transactionEntity.amount,
+        baseFee: transactionEntity.baseFee,
+        deliveryFee: transactionEntity.deliveryFee,
+        totalAmount: transactionEntity.totalAmount,
+        quantity: transactionEntity.quantity,
+        status: transactionEntity.status,
+        paymentMethod: transactionEntity.paymentMethod,
+        externalTransactionId: transactionEntity.externalTransactionId,
+        externalReference: transactionEntity.externalReference,
+        errorMessage: transactionEntity.errorMessage,
+        createdAt: transactionEntity.createdAt,
+        updatedAt: transactionEntity.updatedAt,
+      };
+
+      return ok({
+        transaction: resultTransaction,
+        message:
+          finalStatus === TransactionStatus.APPROVED
+            ? 'Payment successful!'
+            : 'Payment processed',
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
       return err(
         new Error(
-          `Failed to create payment source: ${paymentSourceResult.error.message}`,
+          `Payment process failed: ${error instanceof Error ? error.message : 'Unknown'}`,
         ),
       );
+    } finally {
+      await queryRunner.release();
     }
-
-    // Step 6: Create External transaction (ROP)
-    const externalTransactionResult = await paymentGateway.createTransaction({
-      amount_in_cents: fees.totalAmount,
-      currency: 'COP',
-      customer_email: customer.email,
-      payment_source_id: paymentSourceResult.value.id,
-      reference: transaction.reference,
-      signature: 'test_signature',
-    });
-
-    // Step 7: Update transaction status based on External result (ROP)
-    if (!externalTransactionResult.success) {
-      await transactionRepository.updateStatus(
-        transaction.id,
-        TransactionStatus.ERROR,
-        {
-          errorMessage: externalTransactionResult.error.message,
-        },
-      );
-      return err(
-        new Error(`Payment failed: ${externalTransactionResult.error.message}`),
-      );
-    }
-
-    const finalStatus =
-      externalTransactionResult.value.status === 'APPROVED'
-        ? TransactionStatus.APPROVED
-        : externalTransactionResult.value.status === 'DECLINED'
-          ? TransactionStatus.DECLINED
-          : TransactionStatus.ERROR;
-
-    const updatedTransaction = await transactionRepository.updateStatus(
-      transaction.id,
-      finalStatus,
-      {
-        externalTransactionId: externalTransactionResult.value.id,
-        externalReference: externalTransactionResult.value.reference,
-      },
-    );
-
-    // Step 8: Update stock if approved (ROP)
-    if (finalStatus === TransactionStatus.APPROVED) {
-      await productRepository.updateStock(input.productId, -input.quantity);
-    }
-
-    return ok({
-      transaction: updatedTransaction || transaction,
-      message:
-        finalStatus === TransactionStatus.APPROVED
-          ? 'Payment successful!'
-          : finalStatus === TransactionStatus.DECLINED
-            ? 'Payment declined by payment provider'
-            : 'Payment processing error',
-    });
   };
 };

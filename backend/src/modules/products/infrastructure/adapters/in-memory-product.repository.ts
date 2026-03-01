@@ -81,27 +81,13 @@ export class InMemoryProductRepository implements ProductRepositoryPort {
     return products.find((p) => p.id === id) || null;
   }
 
-  async updateStock(
-    productId: string,
-    quantityChange: number,
-  ): Promise<Product | null> {
+  async updateStock(productId: string, quantityChange: number): Promise<void> {
     const product = products.find((p) => p.id === productId);
-    if (!product) return null;
-
-    const newStock = product.stock + quantityChange;
-    if (newStock < 0) return null;
-
-    product.stock = newStock;
-    product.updatedAt = new Date();
-    return { ...product };
-  }
-
-  async checkAvailability(
-    productId: string,
-    quantity: number,
-  ): Promise<boolean> {
-    const product = products.find((p) => p.id === productId);
-    return product !== undefined && product.stock >= quantity;
+    if (product) {
+      const newStock = product.stock + quantityChange;
+      product.stock = newStock;
+      product.updatedAt = new Date();
+    }
   }
 
   // Reset for testing

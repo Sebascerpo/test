@@ -35,6 +35,7 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
       amount: input.amount,
       baseFee: input.baseFee,
       deliveryFee: input.deliveryFee,
+      quantity: input.quantity,
       totalAmount: input.amount + input.baseFee + input.deliveryFee,
       status: TransactionStatus.PENDING,
       paymentMethod: 'CREDIT_CARD' as any,
