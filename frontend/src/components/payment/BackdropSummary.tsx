@@ -1,14 +1,24 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setTransactionResult, setCurrentStep } from '@/store/payment-store';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeftIcon, LoaderIcon, ShieldCheckIcon, CreditCardIcon, TruckIcon, PackageIcon, CheckIcon, AlertCircleIcon, LockIcon } from '@/components/icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setTransactionResult, setCurrentStep } from "@/store/payment-store";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeftIcon,
+  LoaderIcon,
+  ShieldCheckIcon,
+  CreditCardIcon,
+  TruckIcon,
+  PackageIcon,
+  CheckIcon,
+  AlertCircleIcon,
+  LockIcon,
+} from "@/components/icons";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Fees configuration
 const FEES = {
@@ -23,14 +33,15 @@ interface BackdropSummaryProps {
 
 export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
-  const { selectedProduct, quantity, creditCard, deliveryInfo } = useAppSelector((state) => state.payment);
+  const { selectedProduct, quantity, creditCard, deliveryInfo } =
+    useAppSelector((state) => state.payment);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
       minimumFractionDigits: 0,
     }).format(price);
   };
@@ -43,9 +54,9 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
 
     try {
       // API is proxied through Next.js to NestJS backend
-      const response = await fetch('/api/payment/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/payment/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: selectedProduct.id,
           quantity: quantity,
@@ -58,7 +69,7 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
             postalCode: deliveryInfo.postalCode,
           },
           cardInfo: {
-            number: creditCard.number.replace(/\s/g, ''),
+            number: creditCard.number.replace(/\s/g, ""),
             cvv: creditCard.cvc,
             expMonth: creditCard.expiryMonth,
             expYear: creditCard.expiryYear,
@@ -70,25 +81,34 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Error al procesar el pago');
+        throw new Error(data.message || "Error al procesar el pago");
       }
 
       // Save result to Redux store (Flux action)
-      dispatch(setTransactionResult({
-        id: data.transaction.id,
-        transactionNumber: data.transaction.reference,
-        status: data.transaction.status as 'APPROVED' | 'DECLINED' | 'ERROR' | 'PENDING' | 'VOIDED',
-        amount: data.transaction.totalAmount,
-        wompiTransactionId: data.transaction.wompiTransactionId,
-        errorMessage: data.transaction.errorMessage || data.message,
-      }));
+      dispatch(
+        setTransactionResult({
+          id: data.transaction.id,
+          transactionNumber: data.transaction.reference,
+          status: data.transaction.status as
+            | "APPROVED"
+            | "DECLINED"
+            | "ERROR"
+            | "PENDING"
+            | "VOIDED",
+          amount: data.transaction.totalAmount,
+          externalTransactionId: data.transaction.externalTransactionId,
+          errorMessage: data.transaction.errorMessage || data.message,
+        }),
+      );
 
       // Navigate back to product page
-      dispatch(setCurrentStep('product'));
+      dispatch(setCurrentStep("product"));
       onComplete();
     } catch (err) {
-      console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : 'Error al procesar el pago');
+      console.error("Payment error:", err);
+      setError(
+        err instanceof Error ? err.message : "Error al procesar el pago",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +121,7 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
   const totalAmount = selectedProduct.price + FEES.baseFee + FEES.deliveryFee;
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -111,10 +131,10 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
       <div className="min-h-full flex items-end sm:items-center justify-center p-4">
         <motion.div
           className="w-full max-w-lg bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
-          initial={{ y: '100%', opacity: 0 }}
+          initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 flex-shrink-0">
@@ -146,11 +166,17 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                     <PackageIcon size={24} className="text-slate-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-sm">{selectedProduct.name}</p>
-                    <p className="text-xs text-muted-foreground">Cantidad: {quantity}</p>
+                    <p className="font-medium truncate text-sm">
+                      {selectedProduct.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Cantidad: {quantity}
+                    </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold">{formatPrice(selectedProduct.price)}</p>
+                    <p className="font-bold">
+                      {formatPrice(selectedProduct.price)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -170,7 +196,9 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                         <Badge variant="outline" className="text-[10px] h-5">
                           {creditCard.brand}
                         </Badge>
-                        <span className="text-xs font-medium">•••• {creditCard.number.slice(-4)}</span>
+                        <span className="text-xs font-medium">
+                          •••• {creditCard.number.slice(-4)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -188,10 +216,17 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground">Enviar a</p>
-                    <p className="text-sm font-medium truncate">{deliveryInfo.firstName} {deliveryInfo.lastName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{deliveryInfo.address}, {deliveryInfo.city}</p>
+                    <p className="text-sm font-medium truncate">
+                      {deliveryInfo.firstName} {deliveryInfo.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {deliveryInfo.address}, {deliveryInfo.city}
+                    </p>
                   </div>
-                  <CheckIcon size={16} className="text-green-500 flex-shrink-0" />
+                  <CheckIcon
+                    size={16}
+                    className="text-green-500 flex-shrink-0"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -214,7 +249,9 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                 <Separator />
                 <div className="flex justify-between font-bold">
                   <span>Total</span>
-                  <span className="text-primary">{formatPrice(totalAmount)}</span>
+                  <span className="text-primary">
+                    {formatPrice(totalAmount)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -224,7 +261,7 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
               {error && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                 >
                   <Card className="border-destructive bg-destructive/10">
@@ -233,7 +270,9 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
                         <AlertCircleIcon size={16} />
                         <p className="text-sm font-medium">Error</p>
                       </div>
-                      <p className="text-xs text-destructive/80 mt-1">{error}</p>
+                      <p className="text-xs text-destructive/80 mt-1">
+                        {error}
+                      </p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -247,8 +286,8 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
               <LockIcon size={12} />
               <span>Pago 100% seguro</span>
             </div>
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               size="lg"
               onClick={handlePayment}
               disabled={isLoading}

@@ -12,9 +12,9 @@ export abstract class TransactionRepositoryPort {
   abstract updateStatus(
     id: string,
     status: TransactionStatus,
-    wompiData?: {
-      wompiTransactionId?: string;
-      wompiReference?: string;
+    externalData?: {
+      externalTransactionId?: string;
+      externalReference?: string;
       errorMessage?: string;
     },
   ): Promise<Transaction | null>;

@@ -13,7 +13,7 @@ async function bootstrap() {
     credentials: true,
   });
   await app.listen(PORT);
-  console.log(`🚀 Wompi API running on port ${PORT}`);
+  console.log(`🚀 Payment API running on port ${PORT}`);
   console.log(`📍 Health: http://localhost:${PORT}/health`);
   console.log(`📦 Products: http://localhost:${PORT}/api/products`);
   console.log(`💳 Payment: http://localhost:${PORT}/api/payment/process`);

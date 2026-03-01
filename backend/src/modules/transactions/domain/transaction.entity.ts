@@ -21,8 +21,8 @@ export interface Transaction {
   totalAmount: number;
   status: TransactionStatus;
   paymentMethod: PaymentMethod;
-  wompiTransactionId?: string;
-  wompiReference?: string;
+  externalTransactionId?: string;
+  externalReference?: string;
   errorMessage?: string;
   createdAt: Date;
   updatedAt: Date;

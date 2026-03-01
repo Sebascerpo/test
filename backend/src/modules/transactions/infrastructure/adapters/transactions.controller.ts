@@ -17,7 +17,7 @@ import {
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
 import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
 import { CustomerRepositoryPort } from '../../../customers/application/ports/customer.repository.port';
-import { WompiGatewayPort } from '../../../wompi/application/ports/wompi.gateway.port';
+import { PaymentGatewayPort } from '../../../payment/application/ports/payment-gateway.port';
 import {
   ProcessPaymentDto,
   TransactionResponseDto,
@@ -35,14 +35,14 @@ export class TransactionsController {
     productRepository: ProductRepositoryPort,
     @Inject(CustomerRepositoryPort)
     customerRepository: CustomerRepositoryPort,
-    @Inject(WompiGatewayPort)
-    wompiGateway: WompiGatewayPort,
+    @Inject(PaymentGatewayPort)
+    paymentGateway: PaymentGatewayPort,
   ) {
     this.processPaymentUseCase = createProcessPaymentUseCase(
       transactionRepository,
       productRepository,
       customerRepository,
-      wompiGateway,
+      paymentGateway,
     );
   }
 
@@ -63,10 +63,10 @@ export class TransactionsController {
       },
       cardInfo: {
         number: dto.cardInfo.number,
-        cvv: dto.cardInfo.cvv,
-        expMonth: dto.cardInfo.expMonth,
-        expYear: dto.cardInfo.expYear,
-        cardHolder: dto.cardInfo.cardHolder,
+        cvc: dto.cardInfo.cvv, // Ensure mapping cvv to cvc if that's what generic gateway expects
+        exp_month: dto.cardInfo.expMonth,
+        exp_year: dto.cardInfo.expYear,
+        card_holder: dto.cardInfo.cardHolder,
       },
     };
 
@@ -85,7 +85,7 @@ export class TransactionsController {
           totalAmount: data.transaction.totalAmount,
           productId: data.transaction.productId,
           createdAt: data.transaction.createdAt,
-          wompiTransactionId: data.transaction.wompiTransactionId,
+          externalTransactionId: data.transaction.externalTransactionId,
           errorMessage: data.transaction.errorMessage,
         },
         message: data.message,

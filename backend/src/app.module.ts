@@ -6,14 +6,14 @@ import { HealthController } from './modules/shared/infrastructure/health.control
 import { InMemoryProductRepository } from './modules/products/infrastructure/adapters/in-memory-product.repository';
 import { InMemoryCustomerRepository } from './modules/customers/infrastructure/adapters/in-memory-customer.repository';
 import { InMemoryTransactionRepository } from './modules/transactions/infrastructure/adapters/in-memory-transaction.repository';
-import { WompiGatewayAdapter } from './modules/wompi/infrastructure/adapters/wompi.gateway.adapter';
+import { PaymentGatewayAdapter } from './modules/payment/infrastructure/adapters/payment-gateway.adapter';
 import { ProductRepositoryPort } from './modules/products/application/ports/product.repository.port';
 import { CustomerRepositoryPort } from './modules/customers/application/ports/customer.repository.port';
 import { TransactionRepositoryPort } from './modules/transactions/application/ports/transaction.repository.port';
 import {
-  WompiGatewayPort,
-  WompiConfig,
-} from './modules/wompi/application/ports/wompi.gateway.port';
+  PaymentGatewayPort,
+  PaymentConfig,
+} from './modules/payment/application/ports/payment-gateway.port';
 
 @Module({
   controllers: [ProductsController, TransactionsController, HealthController],
@@ -32,11 +32,11 @@ import {
       useClass: InMemoryTransactionRepository,
     },
     {
-      provide: WompiGatewayPort,
-      useClass: WompiGatewayAdapter,
+      provide: PaymentGatewayPort,
+      useClass: PaymentGatewayAdapter,
     },
     {
-      provide: WompiConfig,
+      provide: PaymentConfig,
       useValue: {
         publicKey: 'pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7',
         privateKey: 'prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg',

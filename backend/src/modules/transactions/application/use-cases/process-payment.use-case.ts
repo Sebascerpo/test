@@ -1,10 +1,16 @@
 // Use Case: Process Payment (Main Flow - ROP)
-import { ResultAsync, ok, err, flatMapAsync, mapAsync } from '../../../../shared/common/rop';
-import { Transaction, TransactionStatus, TransactionCreateInput } from '../../domain/transaction.entity';
+import { ResultAsync, ok, err } from '../../../../shared/common/rop';
+import {
+  Transaction,
+  TransactionStatus,
+} from '../../domain/transaction.entity';
 import { TransactionRepositoryPort } from '../ports/transaction.repository.port';
 import { ProductRepositoryPort } from '../../../products/application/ports/product.repository.port';
 import { CustomerRepositoryPort } from '../../../customers/application/ports/customer.repository.port';
-import { WompiGatewayPort, CardTokenizationInput } from '../../../wompi/application/ports/wompi.gateway.port';
+import {
+  PaymentGatewayPort,
+  CardTokenizationInput,
+} from '../../../payment/application/ports/payment-gateway.port';
 import { DeliveryInfo } from '../../../customers/domain/customer.entity';
 
 export interface ProcessPaymentInput {
@@ -19,7 +25,9 @@ export interface ProcessPaymentResult {
   message: string;
 }
 
-export type ProcessPaymentUseCase = (input: ProcessPaymentInput) => ResultAsync<ProcessPaymentResult>;
+export type ProcessPaymentUseCase = (
+  input: ProcessPaymentInput,
+) => ResultAsync<ProcessPaymentResult>;
 
 // Helper to calculate fees
 const calculateFees = (amount: number, quantity: number) => {
@@ -34,7 +42,7 @@ export const createProcessPaymentUseCase = (
   transactionRepository: TransactionRepositoryPort,
   productRepository: ProductRepositoryPort,
   customerRepository: CustomerRepositoryPort,
-  wompiGateway: WompiGatewayPort
+  paymentGateway: PaymentGatewayPort,
 ): ProcessPaymentUseCase => {
   return async (input: ProcessPaymentInput) => {
     // Step 1: Validate product availability (ROP)
@@ -49,7 +57,11 @@ export const createProcessPaymentUseCase = (
         }
         return ok(product);
       } catch (error) {
-        return err(new Error(`Failed to validate product: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        return err(
+          new Error(
+            `Failed to validate product: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          ),
+        );
       }
     })();
 
@@ -61,13 +73,19 @@ export const createProcessPaymentUseCase = (
     // Step 2: Create or get customer (ROP)
     const customerResult = await (async () => {
       try {
-        let customer = await customerRepository.findByEmail(input.deliveryInfo.email);
+        let customer = await customerRepository.findByEmail(
+          input.deliveryInfo.email,
+        );
         if (!customer) {
           customer = await customerRepository.create(input.deliveryInfo);
         }
         return ok(customer);
       } catch (error) {
-        return err(new Error(`Failed to create customer: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        return err(
+          new Error(
+            `Failed to create customer: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          ),
+        );
       }
     })();
 
@@ -88,7 +106,11 @@ export const createProcessPaymentUseCase = (
         });
         return ok(transaction);
       } catch (error) {
-        return err(new Error(`Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        return err(
+          new Error(
+            `Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          ),
+        );
       }
     })();
 
@@ -96,60 +118,82 @@ export const createProcessPaymentUseCase = (
 
     const transaction = transactionResult.value;
 
-    // Step 4: Tokenize card with Wompi (ROP)
-    const tokenResult = await wompiGateway.tokenizeCard(input.cardInfo);
+    // Step 4: Tokenize card with External Provider (ROP)
+    const tokenResult = await paymentGateway.tokenizeCard(input.cardInfo);
     if (!tokenResult.success) {
-      await transactionRepository.updateStatus(transaction.id, TransactionStatus.ERROR, {
-        errorMessage: tokenResult.error
-      });
-      return err(new Error(`Card tokenization failed: ${tokenResult.error}`));
+      await transactionRepository.updateStatus(
+        transaction.id,
+        TransactionStatus.ERROR,
+        {
+          errorMessage: tokenResult.error.message,
+        },
+      );
+      return err(
+        new Error(`Tokenization failed: ${tokenResult.error.message}`),
+      );
     }
 
     // Step 5: Create payment source (ROP)
-    const paymentSourceResult = await wompiGateway.createPaymentSource({
-      tokenId: tokenResult.tokenId!,
-      customerEmail: customer.email,
-      type: 'CARD'
+    const paymentSourceResult = await paymentGateway.createPaymentSource({
+      type: 'CARD',
+      token: tokenResult.value.token,
+      customer_email: customer.email,
+      acceptance_token: 'test_token',
     });
 
     if (!paymentSourceResult.success) {
-      await transactionRepository.updateStatus(transaction.id, TransactionStatus.ERROR, {
-        errorMessage: paymentSourceResult.error
-      });
-      return err(new Error(`Payment source creation failed: ${paymentSourceResult.error}`));
+      await transactionRepository.updateStatus(
+        transaction.id,
+        TransactionStatus.ERROR,
+        {
+          errorMessage: paymentSourceResult.error.message,
+        },
+      );
+      return err(
+        new Error(
+          `Failed to create payment source: ${paymentSourceResult.error.message}`,
+        ),
+      );
     }
 
-    // Step 6: Create Wompi transaction (ROP)
-    const wompiTransactionResult = await wompiGateway.createTransaction({
-      amountInCents: fees.totalAmount,
+    // Step 6: Create External transaction (ROP)
+    const externalTransactionResult = await paymentGateway.createTransaction({
+      amount_in_cents: fees.totalAmount,
       currency: 'COP',
-      customerEmail: customer.email,
-      paymentSourceId: parseInt(paymentSourceResult.paymentSourceId!),
+      customer_email: customer.email,
+      payment_source_id: paymentSourceResult.value.id,
       reference: transaction.reference,
-      paymentDescription: `Payment for ${product.name} x${input.quantity}`
+      signature: 'test_signature',
     });
 
-    // Step 7: Update transaction status based on Wompi result (ROP)
-    if (!wompiTransactionResult.success) {
-      await transactionRepository.updateStatus(transaction.id, TransactionStatus.ERROR, {
-        errorMessage: wompiTransactionResult.error
-      });
-      return err(new Error(`Payment failed: ${wompiTransactionResult.error}`));
+    // Step 7: Update transaction status based on External result (ROP)
+    if (!externalTransactionResult.success) {
+      await transactionRepository.updateStatus(
+        transaction.id,
+        TransactionStatus.ERROR,
+        {
+          errorMessage: externalTransactionResult.error.message,
+        },
+      );
+      return err(
+        new Error(`Payment failed: ${externalTransactionResult.error.message}`),
+      );
     }
 
-    const finalStatus = wompiTransactionResult.status === 'APPROVED' 
-      ? TransactionStatus.APPROVED 
-      : wompiTransactionResult.status === 'DECLINED'
-        ? TransactionStatus.DECLINED
-        : TransactionStatus.ERROR;
+    const finalStatus =
+      externalTransactionResult.value.status === 'APPROVED'
+        ? TransactionStatus.APPROVED
+        : externalTransactionResult.value.status === 'DECLINED'
+          ? TransactionStatus.DECLINED
+          : TransactionStatus.ERROR;
 
     const updatedTransaction = await transactionRepository.updateStatus(
       transaction.id,
       finalStatus,
       {
-        wompiTransactionId: wompiTransactionResult.transactionId,
-        wompiReference: wompiTransactionResult.reference
-      }
+        externalTransactionId: externalTransactionResult.value.id,
+        externalReference: externalTransactionResult.value.reference,
+      },
     );
 
     // Step 8: Update stock if approved (ROP)
@@ -159,11 +203,12 @@ export const createProcessPaymentUseCase = (
 
     return ok({
       transaction: updatedTransaction || transaction,
-      message: finalStatus === TransactionStatus.APPROVED 
-        ? 'Payment successful!' 
-        : finalStatus === TransactionStatus.DECLINED
-          ? 'Payment declined by payment provider'
-          : 'Payment processing error'
+      message:
+        finalStatus === TransactionStatus.APPROVED
+          ? 'Payment successful!'
+          : finalStatus === TransactionStatus.DECLINED
+            ? 'Payment declined by payment provider'
+            : 'Payment processing error',
     });
   };
 };

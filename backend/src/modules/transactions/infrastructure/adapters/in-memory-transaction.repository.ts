@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 const generateReference = (): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `WMP-${timestamp}-${random}`;
+  return `TX-${timestamp}-${random}`;
 };
 
 // In-memory storage
@@ -62,9 +62,9 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
   async updateStatus(
     id: string,
     status: TransactionStatus,
-    wompiData?: {
-      wompiTransactionId?: string;
-      wompiReference?: string;
+    externalData?: {
+      externalTransactionId?: string;
+      externalReference?: string;
       errorMessage?: string;
     },
   ): Promise<Transaction | null> {
@@ -75,13 +75,15 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
       ...transaction,
       status,
       updatedAt: new Date(),
-      ...(wompiData?.wompiTransactionId && {
-        wompiTransactionId: wompiData.wompiTransactionId,
+      ...(externalData?.externalTransactionId && {
+        externalTransactionId: externalData.externalTransactionId,
       }),
-      ...(wompiData?.wompiReference && {
-        wompiReference: wompiData.wompiReference,
+      ...(externalData?.externalReference && {
+        externalReference: externalData.externalReference,
       }),
-      ...(wompiData?.errorMessage && { errorMessage: wompiData.errorMessage }),
+      ...(externalData?.errorMessage && {
+        errorMessage: externalData.errorMessage,
+      }),
     };
 
     transactions.set(id, updated);

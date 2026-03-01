@@ -1,5 +1,12 @@
 // DTOs for Transactions API
-import { IsString, IsNumber, IsEmail, Min, IsOptional, Matches } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEmail,
+  Min,
+  IsOptional,
+  Matches,
+} from 'class-validator';
 
 export class DeliveryInfoDto {
   @IsString()
@@ -63,7 +70,7 @@ export class TransactionResponseDto {
     totalAmount: number;
     productId: string;
     createdAt: Date;
-    wompiTransactionId?: string;
+    externalTransactionId?: string;
     errorMessage?: string;
   };
   message: string;

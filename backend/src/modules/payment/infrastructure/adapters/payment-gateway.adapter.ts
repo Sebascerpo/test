@@ -1,236 +1,127 @@
-// Infrastructure Adapter - Wompi Gateway (Sandbox)
+// Infrastructure Adapter - Payment Gateway (Sandbox)
+import { Injectable } from '@nestjs/common';
 import {
-  WompiGatewayPort,
+  PaymentGatewayPort,
   CardTokenizationInput,
   CardTokenizationResult,
   PaymentSourceInput,
   PaymentSourceResult,
   TransactionInput,
   TransactionResult,
-  WompiConfig,
-} from '../../application/ports/wompi.gateway.port';
+  PaymentConfig,
+} from '../../application/ports/payment-gateway.port';
+import { ResultAsync, ok, err } from '../../../../shared/common/rop';
 
-// Wompi Sandbox Configuration
-const WOMPI_CONFIG: WompiConfig = {
+// External Provider Sandbox Configuration
+const EXTERNAL_PROVIDER_CONFIG: PaymentConfig = {
   publicKey: 'pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7',
   privateKey: 'prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg',
   baseUrl: 'https://api-sandbox.co.uat.wompi.dev/v1',
   integrityKey: 'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp',
 };
 
-// Generate integrity signature for transaction
-const generateIntegritySignature = async (
-  reference: string,
-  amountInCents: number,
-  currency: string,
-  integrityKey: string,
-): Promise<string> => {
-  const message = `${reference}${amountInCents}${currency}${integrityKey}`;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-};
-
-import { Injectable } from '@nestjs/common';
-
 @Injectable()
-export class WompiGatewayAdapter implements WompiGatewayPort {
-  private config: WompiConfig;
+export class PaymentGatewayAdapter implements PaymentGatewayPort {
+  private config: PaymentConfig;
 
-  constructor(config: WompiConfig = WOMPI_CONFIG) {
+  constructor(config: PaymentConfig = EXTERNAL_PROVIDER_CONFIG) {
     this.config = config;
   }
 
   async tokenizeCard(
     input: CardTokenizationInput,
-  ): Promise<CardTokenizationResult> {
+  ): ResultAsync<CardTokenizationResult> {
     try {
-      const response = await fetch(`${this.config.baseUrl}/tokens/cards`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.config.publicKey}`,
-        },
-        body: JSON.stringify({
-          number: input.number.replace(/\s/g, ''),
-          cvv: input.cvv,
-          exp_month: input.expMonth,
-          exp_year:
-            input.expYear.length === 2 ? `20${input.expYear}` : input.expYear,
-          card_holder: input.cardHolder,
-        }),
+      console.log('[EXTERNAL_PROVIDER] Tokenizing card...');
+      // Simulation: Return a mock token
+      return ok({
+        token: `tok_test_${Math.random().toString(36).substring(7)}`,
+        last_four: input.number.slice(-4),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error?.message || 'Card tokenization failed',
-        };
-      }
-
-      return {
-        success: true,
-        tokenId: data.data?.id || data.id,
-      };
     } catch (error) {
-      return {
-        success: false,
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
+      return err(
+        new Error(
+          `Tokenization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+      );
     }
   }
 
   async createPaymentSource(
     input: PaymentSourceInput,
-  ): Promise<PaymentSourceResult> {
+  ): ResultAsync<PaymentSourceResult> {
     try {
-      const response = await fetch(`${this.config.baseUrl}/payment_sources`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.config.privateKey}`,
-        },
-        body: JSON.stringify({
-          type: input.type,
-          token: input.tokenId,
-          customer_email: input.customerEmail,
-          acceptance_token: 'TEMP_ACCEPTANCE_TOKEN', // In production, get from Wompi
-        }),
+      console.log('[EXTERNAL_PROVIDER] Creating payment source...');
+      return ok({
+        id: `src_test_${Math.random().toString(36).substring(7)}`,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // For sandbox, simulate success if API fails
-        return {
-          success: true,
-          paymentSourceId: `MOCK_${Date.now()}`,
-        };
-      }
-
-      return {
-        success: true,
-        paymentSourceId: data.data?.id?.toString() || data.id?.toString(),
-      };
     } catch (error) {
-      // For sandbox, simulate success on network errors
-      return {
-        success: true,
-        paymentSourceId: `MOCK_${Date.now()}`,
-      };
+      return err(
+        new Error(
+          `Failed to create payment source: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+      );
     }
   }
 
-  async createTransaction(input: TransactionInput): Promise<TransactionResult> {
+  async createTransaction(
+    input: TransactionInput,
+  ): ResultAsync<TransactionResult> {
     try {
-      // Generate integrity signature
-      const signature = await generateIntegritySignature(
-        input.reference,
-        input.amountInCents,
-        input.currency,
-        this.config.integrityKey,
-      );
-
-      const response = await fetch(`${this.config.baseUrl}/transactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.config.publicKey}`,
-        },
-        body: JSON.stringify({
-          acceptance_token: 'TEMP_ACCEPTANCE_TOKEN',
-          amount_in_cents: input.amountInCents,
-          currency: input.currency,
-          customer_email: input.customerEmail,
-          payment_method: {
-            type: 'CARD',
-            installments: 1,
-          },
-          payment_source_id: input.paymentSourceId,
-          reference: input.reference,
-          signature: signature,
-          customer_data: {
-            phone_number: '+573000000000',
-          },
-        }),
+      console.log('[EXTERNAL_PROVIDER] Creating transaction...', {
+        reference: input.reference,
       });
 
-      const data = await response.json();
+      // Simulation: Random status (mostly APPROVED)
+      const statuses: ('APPROVED' | 'DECLINED' | 'ERROR')[] = [
+        'APPROVED',
+        'APPROVED',
+        'APPROVED',
+        'DECLINED',
+      ];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
 
-      if (!response.ok) {
-        // For sandbox testing, simulate based on card number patterns
-        return this.simulateTransaction(input);
-      }
-
-      const status = data.data?.status || data.status;
-
-      return {
-        success: status === 'APPROVED',
-        transactionId: data.data?.id?.toString() || data.id?.toString(),
+      return ok({
+        id: `tr_test_${Math.random().toString(36).substring(7)}`,
         status: status,
         reference: input.reference,
-        error: status !== 'APPROVED' ? data.error?.message : undefined,
-      };
+      });
     } catch (error) {
-      // For sandbox testing, simulate transaction
-      return this.simulateTransaction(input);
-    }
-  }
-
-  async getTransactionStatus(
-    transactionId: string,
-  ): Promise<TransactionResult> {
-    try {
-      const response = await fetch(
-        `${this.config.baseUrl}/transactions/${transactionId}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.config.publicKey}`,
-          },
-        },
+      return err(
+        new Error(
+          `Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: 'Failed to get transaction status',
-        };
-      }
-
-      const status = data.data?.status || data.status;
-
-      return {
-        success: status === 'APPROVED',
-        transactionId: transactionId,
-        status: status,
-        reference: data.data?.reference || data.reference,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
     }
   }
 
-  // Simulate transaction for sandbox testing
-  private simulateTransaction(input: TransactionInput): TransactionResult {
-    // Simulate: 80% approval rate for testing
-    const isApproved = Math.random() > 0.2;
+  async getTransactionStatus(id: string): ResultAsync<TransactionResult> {
+    try {
+      console.log('[EXTERNAL_PROVIDER] Fetching transaction status...', { id });
+      return ok({
+        id,
+        status: 'APPROVED',
+        reference: `ref_${Math.random().toString(36).substring(7)}`,
+      });
+    } catch (error) {
+      return err(
+        new Error(
+          `Failed to fetch status: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+      );
+    }
+  }
 
-    return {
-      success: isApproved,
-      transactionId: `SIM_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-      status: isApproved ? 'APPROVED' : 'DECLINED',
-      reference: input.reference,
-      error: isApproved ? undefined : 'Transaction declined (simulated)',
-    };
+  async getAcceptanceToken(): ResultAsync<string> {
+    try {
+      console.log('[EXTERNAL_PROVIDER] Fetching acceptance token...');
+      return ok('test_acceptance_token');
+    } catch (error) {
+      return err(
+        new Error(
+          `Failed to fetch acceptance token: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+      );
+    }
   }
 }

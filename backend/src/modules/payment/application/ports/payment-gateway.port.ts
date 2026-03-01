@@ -1,64 +1,61 @@
-// Port - Wompi Gateway Interface
+// Port - Payment Gateway Interface
+import { ResultAsync } from '../../../../shared/common/rop';
+
 export interface CardTokenizationInput {
   number: string;
-  cvv: string;
-  expMonth: string;
-  expYear: string;
-  cardHolder: string;
+  cvc: string;
+  exp_month: string;
+  exp_year: string;
+  card_holder: string;
 }
 
 export interface CardTokenizationResult {
-  success: boolean;
-  tokenId?: string;
-  error?: string;
+  token: string;
+  last_four: string;
 }
 
 export interface PaymentSourceInput {
-  tokenId: string;
-  customerEmail: string;
-  type: 'CARD';
+  type: 'CARD' | 'NEQUI';
+  token?: string;
+  customer_email: string;
+  acceptance_token: string;
 }
 
 export interface PaymentSourceResult {
-  success: boolean;
-  paymentSourceId?: string;
-  error?: string;
+  id: string;
 }
 
 export interface TransactionInput {
-  amountInCents: number;
+  amount_in_cents: number;
   currency: string;
-  customerEmail: string;
-  paymentSourceId: number;
+  customer_email: string;
+  payment_source_id: string;
   reference: string;
-  paymentDescription: string;
+  signature: string;
 }
 
 export interface TransactionResult {
-  success: boolean;
-  transactionId?: string;
-  status?: 'APPROVED' | 'DECLINED' | 'ERROR' | 'PENDING';
-  reference?: string;
-  error?: string;
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'ERROR';
+  reference: string;
 }
 
-export abstract class WompiGatewayPort {
+export abstract class PaymentGatewayPort {
   abstract tokenizeCard(
     input: CardTokenizationInput,
-  ): Promise<CardTokenizationResult>;
+  ): ResultAsync<CardTokenizationResult>;
   abstract createPaymentSource(
     input: PaymentSourceInput,
-  ): Promise<PaymentSourceResult>;
+  ): ResultAsync<PaymentSourceResult>;
   abstract createTransaction(
     input: TransactionInput,
-  ): Promise<TransactionResult>;
-  abstract getTransactionStatus(
-    transactionId: string,
-  ): Promise<TransactionResult>;
+  ): ResultAsync<TransactionResult>;
+  abstract getTransactionStatus(id: string): ResultAsync<TransactionResult>;
+  abstract getAcceptanceToken(): ResultAsync<string>;
 }
 
-// Wompi Configuration
-export class WompiConfig {
+// Payment Gateway Configuration
+export class PaymentConfig {
   publicKey: string;
   privateKey: string;
   baseUrl: string;
