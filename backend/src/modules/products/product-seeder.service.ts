@@ -70,7 +70,6 @@ export class ProductSeederService implements OnApplicationBootstrap {
       await this.productRepository.save(products);
       console.log('Database seeded with products and real images.');
     } else {
-      // Repair logic: Update existing products if they use the old placeholder paths
       for (const productData of products) {
         const existing = await this.productRepository.findOne({
           where: { name: productData.name },

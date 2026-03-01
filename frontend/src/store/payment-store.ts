@@ -44,6 +44,7 @@ export interface Product {
   price: number;
   imageUrl: string | null;
   stock: number;
+  category?: string;
 }
 
 export interface TransactionResult {

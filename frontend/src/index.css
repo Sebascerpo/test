@@ -182,18 +182,55 @@
   letter-spacing: 0.08em;
 }
 
-/* Product card hover */
+/* Glassmorphism */
+.glass {
+  background: color-mix(in oklch, var(--card) 70%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.glass-dark {
+  background: color-mix(in oklch, var(--foreground) 5%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid oklch(1 0 0 / 10%);
+}
+
+/* Premium Shadows */
+.shadow-premium {
+  box-shadow:
+    0 10px 30px -10px oklch(0.13 0 0 / 0.1),
+    0 4px 10px -4px oklch(0.13 0 0 / 0.05);
+}
+
+.shadow-inner-soft {
+  box-shadow: inset 0 2px 4px 0 oklch(0 0 0 / 0.04);
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Refined product card transitions */
 .product-card {
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.2s ease;
 }
 .product-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px -8px oklch(0.13 0 0 / 0.12);
-}
-.product-card:active {
-  transform: translateY(0px) scale(0.99);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -12px oklch(0.13 0 0 / 0.14);
+  border-color: oklch(from var(--border) l c h / 0.8);
 }
 
 /* CTA button */
@@ -237,4 +274,48 @@
   color: var(--muted-foreground);
   margin-bottom: 5px;
   display: block;
+}
+
+/* Validation Toasts */
+.validation-toast {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  pointer-events: none;
+  width: calc(100% - 40px);
+  max-width: 340px;
+}
+
+.toast-content {
+  background: color-mix(in oklch, var(--foreground) 95%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(1 0 0 / 10%);
+  color: var(--background);
+  padding: 10px 16px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow:
+    0 12px 24px -10px oklch(0 0 0 / 0.4),
+    0 4px 8px -2px oklch(0 0 0 / 0.1);
+}
+
+.toast-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--destructive);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast-text {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }

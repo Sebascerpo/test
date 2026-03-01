@@ -30,7 +30,9 @@ import {
   LockIcon,
   ShieldCheckIcon,
   XIcon,
+  AlertCircleIcon,
 } from "@/components/icons";
+import { ValidationToast } from "@/components/ui/ValidationToast";
 import { FEES } from "@/lib/payment-provider";
 import { CreditCardPreview } from "./CreditCardPreview";
 import { motion, AnimatePresence } from "framer-motion";
@@ -102,10 +104,18 @@ export function PaymentModal({
   onComplete,
 }: PaymentModalProps) {
   const dispatch = useAppDispatch();
-  const { creditCard: saved, deliveryInfo: savedDelivery } = useAppSelector(
-    (s) => s.payment,
-  );
+  const {
+    creditCard: saved,
+    deliveryInfo: savedDelivery,
+    quantity,
+  } = useAppSelector((s) => s.payment);
   const [tab, setTab] = useState<"card" | "delivery">("card");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // ── Card state ──────────────────────────────────────────────────────────────
   const [cardNumber, setCardNumber] = useState(saved?.number || "");
@@ -170,37 +180,68 @@ export function PaymentModal({
     city.trim().length >= 2;
 
   const handleContinue = () => {
-    const [m, y] = expiry.split("/");
-    dispatch(
-      setCreditCard({
-        number: cardNumber,
-        holderName,
-        expiryMonth: m || "",
-        expiryYear: y || "",
-        cvc,
-        brand,
-      }),
-    );
-    dispatch(
-      setDeliveryInfo({
-        firstName,
-        lastName,
-        email,
-        phone,
-        documentType: docType,
-        documentNumber: docNumber,
-        address,
-        city,
-        state,
-        postalCode,
-        additionalInfo,
-      }),
-    );
-    dispatch(setCurrentStep("summary"));
-    onComplete();
+    if (tab === "card") {
+      if (!validateCardNumber(cardNumber))
+        return showToast("El número de tarjeta es inválido");
+      if (holderName.trim().length < 5)
+        return showToast("Ingresa el nombre completo del titular");
+      const [m, y] = expiry.split("/");
+      if (!validateExpiryDate(m || "", y || ""))
+        return showToast("La fecha de expiración es inválida");
+      if (!validateCVC(cvc))
+        return showToast("El CVC es inválido (3-4 dígitos)");
+      setTab("delivery");
+      return;
+    }
+
+    if (tab === "delivery") {
+      if (firstName.trim().length < 2)
+        return showToast("El nombre es muy corto");
+      if (lastName.trim().length < 2)
+        return showToast("El apellido es muy corto");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return showToast("El correo electrónico es inválido");
+      if (phone.trim().length < 7)
+        return showToast("El teléfono debe tener al menos 7 dígitos");
+      if (docNumber.trim().length < 5)
+        return showToast("El número de documento es inválido");
+      if (address.trim().length < 5)
+        return showToast("La dirección es muy corta");
+      if (city.trim().length < 2) return showToast("Ingresa una ciudad válida");
+
+      // Save to redux and proceed
+      const [m, y] = expiry.split("/");
+      dispatch(
+        setCreditCard({
+          number: cardNumber,
+          holderName,
+          expiryMonth: m || "",
+          expiryYear: y || "",
+          cvc,
+          brand,
+        }),
+      );
+      dispatch(
+        setDeliveryInfo({
+          firstName,
+          lastName,
+          email,
+          phone,
+          documentType: docType,
+          documentNumber: docNumber,
+          address,
+          city,
+          state,
+          postalCode,
+          additionalInfo,
+        }),
+      );
+      dispatch(setCurrentStep("summary"));
+      onComplete();
+    }
   };
 
-  const total = product.price + FEES.baseFee + FEES.deliveryFee;
+  const total = product.price * quantity + FEES.baseFee + FEES.deliveryFee;
 
   if (!open) return null;
 
@@ -213,6 +254,10 @@ export function PaymentModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
+        <ValidationToast
+          message={toastMessage}
+          onClear={() => setToastMessage(null)}
+        />
         {/* Scrim */}
         <motion.div
           className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
@@ -588,11 +633,7 @@ export function PaymentModal({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <button
-                    onClick={() => setTab("delivery")}
-                    disabled={!cardValid()}
-                    className="sc-btn-primary"
-                  >
+                  <button onClick={handleContinue} className="sc-btn-primary">
                     Continuar con datos de envío
                     <ArrowRightIcon size={15} />
                   </button>
@@ -613,7 +654,6 @@ export function PaymentModal({
                   </button>
                   <button
                     onClick={handleContinue}
-                    disabled={!deliveryValid()}
                     className="sc-btn-primary flex-1"
                     style={{ width: "auto" }}
                   >

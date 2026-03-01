@@ -65,7 +65,8 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
 
   if (!selectedProduct || !creditCard || !deliveryInfo) return null;
 
-  const total = selectedProduct.price + FEES.baseFee + FEES.deliveryFee;
+  const productTotal = selectedProduct.price * quantity;
+  const total = productTotal + FEES.baseFee + FEES.deliveryFee;
 
   const handlePay = () => {
     if (tapped) return;
@@ -241,7 +242,10 @@ export function BackdropSummary({ onBack, onComplete }: BackdropSummaryProps) {
 
           {/* Breakdown */}
           <div className="rounded-2xl border border-border px-4 py-1">
-            <Row label="Producto" value={fmt(selectedProduct.price)} />
+            <Row
+              label={`Producto (${quantity})`}
+              value={fmt(selectedProduct.price * quantity)}
+            />
             <Row label="Tarifa de servicio" value={fmt(FEES.baseFee)} />
             <Row label="Costo de envío" value={fmt(FEES.deliveryFee)} />
             <Row label="Total" value={fmt(total)} total />

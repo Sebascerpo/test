@@ -24,28 +24,28 @@ const formatPrice = (price: number) =>
   }).format(price);
 
 function StockBar({ stock }: { stock: number }) {
-  if (stock <= 0)
-    return (
-      <span className="text-[11px] font-medium text-destructive">Agotado</span>
-    );
-  if (stock <= 5)
-    return (
-      <div className="flex items-center gap-1.5">
-        <div className="flex gap-0.5">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full ${i < stock ? "bg-orange-400" : "bg-border"}`}
-            />
-          ))}
-        </div>
-        <span className="text-[11px] font-medium text-orange-500">
-          ¡Solo {stock}!
+  if (stock <= 0) return null;
+
+  const isLow = stock <= 5;
+  const percentage = Math.min((stock / 20) * 100, 100);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span
+          className={`text-[10px] font-bold uppercase tracking-wider ${isLow ? "text-orange-500" : "text-emerald-600"}`}
+        >
+          {isLow ? `¡Solo ${stock} disponibles!` : "Stock disponible"}
         </span>
       </div>
-    );
-  return (
-    <span className="text-[11px] font-medium text-emerald-600">Disponible</span>
+      <div className="h-1 w-full bg-muted rounded-full overflow-hidden shadow-inner-soft">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          className={`h-full rounded-full ${isLow ? "bg-orange-400" : "bg-emerald-500"}`}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -64,11 +64,176 @@ function ProductSkeleton() {
   );
 }
 
+interface ProductCardProps {
+  product: Product;
+  index: number;
+  onSelect: (product: Product, quantity: number) => void;
+}
+function ProductCard({ product, index, onSelect }: ProductCardProps) {
+  const [qty, setQty] = useState(1);
+  const isOutOfStock = product.stock <= 0;
+
+  const increment = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (qty < product.stock) setQty((q) => q + 1);
+  };
+
+  const decrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (qty > 1) setQty((q) => q - 1);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.4,
+        delay: index * 0.08,
+        ease: [0.23, 1, 0.32, 1],
+      }}
+    >
+      <article
+        className={`product-card group relative rounded-[22px] border border-border bg-card overflow-hidden flex flex-col ${
+          isOutOfStock ? "cursor-default" : "cursor-pointer"
+        }`}
+        onClick={() => !isOutOfStock && onSelect(product, qty)}
+      >
+        {/* Image */}
+        <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
+          {product.imageUrl ? (
+            <>
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out ${
+                  !isOutOfStock
+                    ? "group-hover:scale-110"
+                    : "grayscale opacity-80"
+                }`}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <PackageIcon size={40} className="text-muted-foreground/20" />
+            </div>
+          )}
+
+          {/* Sold-out tag */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 flex items-center justify-center glass-dark">
+              <div className="px-4 py-2 rounded-full border border-white/20 bg-black/40 backdrop-blur-md">
+                <span className="text-[11px] font-bold text-white uppercase tracking-widest animate-pulse-subtle">
+                  Agotado
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Category Chip */}
+          {product.category && !isOutOfStock && (
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-black/5 shadow-sm">
+              <span className="text-[10px] font-bold text-foreground/70 uppercase tracking-wider">
+                {product.category}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col flex-1 p-5 space-y-4">
+          <div className="space-y-1.5">
+            <h2 className="font-bold text-[16px] leading-tight tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+              {product.name}
+            </h2>
+            <p className="text-muted-foreground text-[13px] leading-snug line-clamp-2">
+              {product.description}
+            </p>
+          </div>
+
+          <div className="flex-1" />
+
+          {isOutOfStock ? (
+            <div className="py-4 px-3 rounded-2xl bg-muted/50 border border-dashed border-border flex flex-col items-center justify-center gap-1.5">
+              <PackageIcon size={16} className="text-muted-foreground/50" />
+              <p className="text-sm font-semibold text-foreground/80">
+                Este producto volverá pronto
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Estamos trabajando para tenerlo de nuevo.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Price + Quantity Selector */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                    {qty} {qty === 1 ? "unidad" : "unidades"}
+                  </p>
+                  <p className="text-2xl font-bold tracking-tight text-foreground leading-none">
+                    {formatPrice(product.price * qty)}
+                  </p>
+                  {qty > 1 && (
+                    <p className="text-[10px] font-medium text-muted-foreground mt-1.5">
+                      {formatPrice(product.price)} cada uno
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  className="flex items-center bg-secondary/80 rounded-[14px] p-1 border border-border/50 shadow-inner-soft"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={decrement}
+                    disabled={qty <= 1}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-90 transition-all disabled:opacity-20"
+                  >
+                    <span className="text-lg font-bold leading-none">−</span>
+                  </button>
+                  <div className="w-8 text-center">
+                    <span className="text-sm font-bold tabular-nums">
+                      {qty}
+                    </span>
+                  </div>
+                  <button
+                    onClick={increment}
+                    disabled={qty >= product.stock}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background hover:shadow-premium active:scale-90 transition-all disabled:opacity-20"
+                  >
+                    <span className="text-lg font-bold leading-none">+</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <button
+                disabled={isOutOfStock}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(product, qty);
+                }}
+                className="sc-btn-primary hover:shadow-xl transition-all duration-300"
+              >
+                Comprar ahora
+                <ZapIcon size={16} className="fill-current" />
+              </button>
+
+              <StockBar stock={product.stock} />
+            </>
+          )}
+        </div>
+      </article>
+    </motion.div>
+  );
+}
+
 export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
   const dispatch = useAppDispatch();
-  const { transactionResult, selectedProduct } = useAppSelector(
-    (s) => s.payment,
-  );
+  const { transactionResult } = useAppSelector((s) => s.payment);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,9 +259,9 @@ export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
     if (transactionResult?.status === "APPROVED") fetchProducts();
   }, [transactionResult?.status]);
 
-  const handleSelect = (product: Product) => {
+  const handleSelect = (product: Product, quantity: number) => {
     if (product.stock <= 0) return;
-    dispatch(setSelectedProduct({ product, quantity: 1 }));
+    dispatch(setSelectedProduct({ product, quantity }));
     onSelectProduct?.();
   };
 
@@ -183,91 +348,12 @@ export function ProductCatalog({ onSelectProduct }: ProductCatalogProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <AnimatePresence>
             {products.map((product, index) => (
-              <motion.div
+              <ProductCard
                 key={product.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.06 }}
-              >
-                <article
-                  className={`product-card group relative rounded-2xl border border-border bg-card overflow-hidden flex flex-col ${
-                    product.stock <= 0
-                      ? "opacity-55 grayscale cursor-not-allowed"
-                      : "cursor-pointer"
-                  }`}
-                  onClick={() => handleSelect(product)}
-                >
-                  {/* Image */}
-                  <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <PackageIcon
-                          size={40}
-                          className="text-muted-foreground/30"
-                        />
-                      </div>
-                    )}
-
-                    {/* Sold-out overlay */}
-                    {product.stock <= 0 && (
-                      <div className="absolute inset-0 bg-background/75 backdrop-blur-[2px] flex items-center justify-center">
-                        <span className="text-xs font-semibold text-foreground/60 border border-border rounded-full px-3 py-1">
-                          Agotado
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Low stock chip */}
-                    {product.stock > 0 && product.stock <= 5 && (
-                      <div className="absolute top-2.5 right-2.5 bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                        ¡Últimas {product.stock}!
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Body */}
-                  <div className="flex flex-col flex-1 p-4">
-                    <h2 className="font-semibold text-[15px] leading-snug tracking-tight line-clamp-1 mb-1">
-                      {product.name}
-                    </h2>
-                    <p className="text-muted-foreground text-xs leading-relaxed line-clamp-2 flex-1">
-                      {product.description}
-                    </p>
-
-                    {/* Price + stock */}
-                    <div className="flex items-end justify-between mt-3 mb-4">
-                      <div>
-                        <p className="text-2xl font-semibold tracking-tight leading-none">
-                          {formatPrice(product.price)}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          COP · precio unitario
-                        </p>
-                      </div>
-                      <StockBar stock={product.stock} />
-                    </div>
-
-                    {/* CTA */}
-                    <button
-                      disabled={product.stock <= 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelect(product);
-                      }}
-                      className="w-full h-11 rounded-xl bg-foreground text-background text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      Comprar ahora
-                    </button>
-                  </div>
-                </article>
-              </motion.div>
+                product={product}
+                index={index}
+                onSelect={handleSelect}
+              />
             ))}
           </AnimatePresence>
         </div>
