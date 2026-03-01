@@ -111,7 +111,9 @@ export function PaymentModal({
     const [expiryMonth = "", expiryYear = ""] = expiry.split("/");
     const cleanedNumber = cardNumber.replace(/\s/g, "");
     const hasSomeCardSignal =
-      holderName.trim().length > 0 || cleanedNumber.length > 0 || expiry.length > 0;
+      holderName.trim().length > 0 ||
+      cleanedNumber.length > 0 ||
+      expiry.length > 0;
 
     if (!hasSomeCardSignal) {
       dispatch(setCardPreview(null));
@@ -141,7 +143,11 @@ export function PaymentModal({
 
   const handleExpiry = (value: string) => {
     const digits = value.replace(/\D/g, "");
-    setExpiry(digits.length >= 2 ? `${digits.slice(0, 2)}/${digits.slice(2, 4)}` : digits);
+    setExpiry(
+      digits.length >= 2
+        ? `${digits.slice(0, 2)}/${digits.slice(2, 4)}`
+        : digits,
+    );
   };
 
   const cardValid = () => {

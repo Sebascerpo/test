@@ -9,12 +9,17 @@ import { TransactionDetailsCard } from "@/features/transaction/components/transa
 import { ResultActions } from "@/features/transaction/components/transaction-result/ResultActions";
 
 interface TransactionResultPageProps {
-  onDismiss: (options: { showToast: boolean; refreshProducts: boolean }) => void;
+  onDismiss: (options: {
+    showToast: boolean;
+    refreshProducts: boolean;
+  }) => void;
 }
 
 const AUTO_REDIRECT_SECONDS = 5;
 
-export function TransactionResultPage({ onDismiss }: TransactionResultPageProps) {
+export function TransactionResultPage({
+  onDismiss,
+}: TransactionResultPageProps) {
   const { isOnline } = useNetworkStatus();
   const {
     pendingTransactionReference,

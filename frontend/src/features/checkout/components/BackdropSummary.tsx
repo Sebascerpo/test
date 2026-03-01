@@ -270,7 +270,8 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
                 animate={{ opacity: 1 }}
                 className="text-center text-[11px] text-amber-600 mb-2 font-medium"
               >
-                Por seguridad debes reingresar número de tarjeta y CVC antes de pagar.
+                Por seguridad debes reingresar número de tarjeta y CVC antes de
+                pagar.
               </motion.p>
             )}
           </AnimatePresence>

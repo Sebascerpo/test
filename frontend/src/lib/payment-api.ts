@@ -37,7 +37,9 @@ interface ApiTransactionLike {
   errorMessage?: string;
 }
 
-const mapTransaction = (transaction: ApiTransactionLike): TransactionResult => ({
+const mapTransaction = (
+  transaction: ApiTransactionLike,
+): TransactionResult => ({
   id: transaction.id,
   transactionNumber: transaction.reference,
   status: transaction.status,
@@ -100,7 +102,8 @@ export async function processPaymentApi(
         ok: false,
         error: {
           code: "HTTP_ERROR",
-          message: data?.message || "No pudimos procesar el pago en este momento.",
+          message:
+            data?.message || "No pudimos procesar el pago en este momento.",
           retryable: response.status >= 500,
         },
       };
@@ -127,7 +130,9 @@ export async function syncTransactionStatusApi(
   reference: string,
 ): Promise<RopResult<TransactionResult>> {
   try {
-    const response = await fetch(`/api/transactions/reference/${reference}/sync`);
+    const response = await fetch(
+      `/api/transactions/reference/${reference}/sync`,
+    );
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -152,7 +157,9 @@ export async function syncTransactionStatusApi(
         ok: false,
         error: {
           code: "HTTP_ERROR",
-          message: data?.message || "No pudimos sincronizar el estado de la transacción.",
+          message:
+            data?.message ||
+            "No pudimos sincronizar el estado de la transacción.",
           retryable: response.status >= 500,
         },
       };
@@ -163,7 +170,8 @@ export async function syncTransactionStatusApi(
         ok: false,
         error: {
           code: "INVALID_RESPONSE",
-          message: "No pudimos leer el estado de la transacción en la respuesta del servidor.",
+          message:
+            "No pudimos leer el estado de la transacción en la respuesta del servidor.",
           retryable: true,
         },
       };

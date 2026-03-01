@@ -60,7 +60,13 @@ export function StatusHero({ status, isOnline }: StatusHeroProps) {
               <motion.div
                 key={idx}
                 className="absolute rounded-full border border-foreground/15"
-                initial={{ width: 80, height: 80, x: -40, y: -40, opacity: 0.5 }}
+                initial={{
+                  width: 80,
+                  height: 80,
+                  x: -40,
+                  y: -40,
+                  opacity: 0.5,
+                }}
                 animate={{
                   width: 200,
                   height: 200,

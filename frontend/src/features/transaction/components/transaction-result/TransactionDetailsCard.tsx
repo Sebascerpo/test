@@ -1,4 +1,9 @@
-import { CardPreview, DeliveryInfo, Product, TransactionResult } from "@/store/payment-store";
+import {
+  CardPreview,
+  DeliveryInfo,
+  Product,
+  TransactionResult,
+} from "@/store/payment-store";
 import { motion } from "framer-motion";
 
 const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
@@ -44,11 +49,17 @@ export function TransactionDetailsCard({
               📦
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{selectedProduct.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Cantidad: {quantity}</p>
+              <p className="text-sm font-semibold truncate">
+                {selectedProduct.name}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Cantidad: {quantity}
+              </p>
             </div>
             <p className="text-sm font-semibold flex-shrink-0">
-              {transaction.amount > 0 ? fmt(transaction.amount) : "Por confirmar"}
+              {transaction.amount > 0
+                ? fmt(transaction.amount)
+                : "Por confirmar"}
             </p>
           </div>
         )}
@@ -81,8 +92,12 @@ export function TransactionDetailsCard({
 
           {deliveryInfo && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Ciudad de envío</span>
-              <span className="text-xs text-foreground/80 text-right">{deliveryInfo.city}</span>
+              <span className="text-xs text-muted-foreground">
+                Ciudad de envío
+              </span>
+              <span className="text-xs text-foreground/80 text-right">
+                {deliveryInfo.city}
+              </span>
             </div>
           )}
         </div>

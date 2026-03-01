@@ -39,7 +39,9 @@ export function usePendingTransactionRecovery() {
 
     const hasSameTransactionResult =
       transactionResult?.transactionNumber === pendingTransactionReference;
-    const status = hasSameTransactionResult ? transactionResult?.status : "PENDING";
+    const status = hasSameTransactionResult
+      ? transactionResult?.status
+      : "PENDING";
 
     if (status && status !== "PENDING") return;
 

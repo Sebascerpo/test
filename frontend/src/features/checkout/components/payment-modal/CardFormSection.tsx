@@ -1,13 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
-import {
-  CheckIcon,
-  LockIcon,
-} from "@/components/icons";
-import {
-  CardBrand,
-  validateCardNumber,
-} from "@/store/payment-store";
+import { CheckIcon, LockIcon } from "@/components/icons";
+import { CardBrand, validateCardNumber } from "@/store/payment-store";
 import { CreditCardPreview } from "@/features/checkout/components/CreditCardPreview";
 
 interface FieldProps {
@@ -137,7 +131,9 @@ export function CardFormSection({
             className="sc-field mono"
             placeholder="•••"
             value={cvc}
-            onChange={(e) => onCvcChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={(e) =>
+              onCvcChange(e.target.value.replace(/\D/g, "").slice(0, 4))
+            }
             onFocus={() => setShowCvc(true)}
             onBlur={() => setShowCvc(false)}
             maxLength={4}
@@ -162,8 +158,9 @@ export function CardFormSection({
 
       <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
         <p className="text-[11px] text-amber-700 leading-relaxed">
-          Guardamos solo una vista segura de la tarjeta (marca y últimos 4 dígitos).
-          Por seguridad, número completo y CVC nunca se guardan en tu navegador.
+          Guardamos solo una vista segura de la tarjeta (marca y últimos 4
+          dígitos). Por seguridad, número completo y CVC nunca se guardan en tu
+          navegador.
         </p>
       </div>
 

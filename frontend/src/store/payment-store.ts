@@ -126,9 +126,8 @@ const createClientPaymentReference = (): string => {
   return `TX-${timestamp}-${random}`;
 };
 
-const isTerminalStatus = (
-  status: TransactionResult["status"],
-): boolean => status !== "PENDING";
+const isTerminalStatus = (status: TransactionResult["status"]): boolean =>
+  status !== "PENDING";
 
 export const processPayment = createAsyncThunk(
   "payment/process",
@@ -226,7 +225,8 @@ export const syncTransactionStatus = createAsyncThunk(
         state.transactionResult?.transactionNumber;
 
       if (!pendingReference) return false;
-      if (state.isSyncing && state.syncReference === pendingReference) return false;
+      if (state.isSyncing && state.syncReference === pendingReference)
+        return false;
 
       const recentSyncMs = 900;
       const elapsed = state.lastSyncAt ? Date.now() - state.lastSyncAt : null;

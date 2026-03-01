@@ -52,7 +52,10 @@ describe("PaymentModal card security handling", () => {
       screen.getByPlaceholderText("0000 0000 0000 0000"),
       "4242424242424242",
     );
-    await user.type(screen.getByPlaceholderText("NOMBRE APELLIDO"), "JUAN PEREZ");
+    await user.type(
+      screen.getByPlaceholderText("NOMBRE APELLIDO"),
+      "JUAN PEREZ",
+    );
     await user.type(screen.getByPlaceholderText("MM/AA"), "1230");
     await user.type(screen.getByPlaceholderText("•••"), "123");
 

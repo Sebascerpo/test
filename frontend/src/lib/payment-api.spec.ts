@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  processPaymentApi,
-  syncTransactionStatusApi,
-} from "@/lib/payment-api";
+import { processPaymentApi, syncTransactionStatusApi } from "@/lib/payment-api";
 
 afterEach(() => {
   vi.restoreAllMocks();

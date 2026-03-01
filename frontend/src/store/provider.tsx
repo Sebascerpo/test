@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { store, persistor } from '@/store/payment-store';
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { store, persistor } from "@/store/payment-store";
 
 export function ReduxProvider({ children }: { children: React.ReactNode }) {
   return (

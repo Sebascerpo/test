@@ -6,7 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { paymentInitialState, paymentReducer } from "@/store/payment-store";
 import { TransactionResultPage } from "@/features/transaction/components/TransactionResultPage";
 
-function renderResultPage(status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR", onDismiss: (options: { showToast: boolean; refreshProducts: boolean }) => void) {
+function renderResultPage(
+  status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR",
+  onDismiss: (options: {
+    showToast: boolean;
+    refreshProducts: boolean;
+  }) => void,
+) {
   const store = configureStore({
     reducer: { payment: paymentReducer } as any,
     preloadedState: {

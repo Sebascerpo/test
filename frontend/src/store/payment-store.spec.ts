@@ -231,7 +231,9 @@ describe("payment-store security and resiliency", () => {
     };
 
     const store = createTestStore(preloadedState);
-    const action = (await store.dispatch(syncTransactionStatus("TX-DUP-1"))) as any;
+    const action = (await store.dispatch(
+      syncTransactionStatus("TX-DUP-1"),
+    )) as any;
 
     expect(action.type).toBe("payment/sync/rejected");
     expect(action.meta.condition).toBe(true);
@@ -244,7 +246,9 @@ describe("payment-store security and resiliency", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const store = createTestStore();
 
-    const action = (await store.dispatch(syncTransactionStatus(undefined))) as any;
+    const action = (await store.dispatch(
+      syncTransactionStatus(undefined),
+    )) as any;
     expect(action.type).toBe("payment/sync/rejected");
     expect(action.meta.condition).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -263,7 +267,9 @@ describe("payment-store security and resiliency", () => {
       },
     });
 
-    const action = (await store.dispatch(syncTransactionStatus("TX-RECENT-1"))) as any;
+    const action = (await store.dispatch(
+      syncTransactionStatus("TX-RECENT-1"),
+    )) as any;
     expect(action.type).toBe("payment/sync/rejected");
     expect(action.meta.condition).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();

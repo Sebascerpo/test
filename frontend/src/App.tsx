@@ -1,8 +1,5 @@
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import {
-  setCurrentStep,
-  reset,
-} from "@/store/payment-store";
+import { setCurrentStep, reset } from "@/store/payment-store";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { usePendingTransactionRecovery } from "@/hooks/usePendingTransactionRecovery";
 import { ProductCatalog } from "@/features/catalog/components/ProductCatalog";
@@ -147,11 +144,7 @@ function AppContent() {
         )}
 
         {/* Step: summary */}
-        {showBackdrop && (
-          <BackdropSummary
-            onBack={handleBackdropBack}
-          />
-        )}
+        {showBackdrop && <BackdropSummary onBack={handleBackdropBack} />}
 
         {/* Step: result — full-screen */}
         <AnimatePresence>
