@@ -123,12 +123,62 @@ cp frontend/.env.template frontend/.env
 docker compose up --build
 ```
 
+Detached mode (optional):
+
+```bash
+docker compose up --build -d
+```
+
+Stop and remove containers:
+
+```bash
+docker compose down
+```
+
+Stop and remove containers + DB volume reset:
+
+```bash
+docker compose down -v
+```
+
 Services:
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:3002`
 - Swagger: `http://localhost:3002/api/docs`
 - PostgreSQL: `localhost:5432`
+
+### 1.1) Verify frontend-backend communication in Docker
+
+Direct backend checks:
+
+```bash
+curl http://localhost:3002/health
+curl http://localhost:3002/api/products
+```
+
+Through frontend Vite proxy (frontend -> backend):
+
+```bash
+curl http://localhost:5173/api/products
+```
+
+Useful logs:
+
+```bash
+docker compose logs -f backend frontend
+```
+
+If `payment-backend` becomes `unhealthy`:
+
+- Ensure backend DB SSL is disabled for local Docker Postgres:
+  - `DATABASE_SSL=false` (or leave it unset, default is `false`).
+- Then restart:
+
+```bash
+docker compose down
+docker compose up --build -d
+```
 
 ### 2) Backend only (optional)
 

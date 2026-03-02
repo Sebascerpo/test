@@ -5,10 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "vite --config vite.config.ts",
+    "build": "tsc && vite build --config vite.config.ts",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --config vite.config.ts",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --runInBand --detectOpenHandles",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --watch",
     "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --coverage --runInBand --detectOpenHandles"

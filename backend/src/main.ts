@@ -9,7 +9,8 @@ import { existsSync } from 'fs';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Request, Response, NextFunction } from 'express';
 
-const PORT = 3002;
+const PORT = Number.parseInt(process.env.PORT ?? '3002', 10);
+const HOST = process.env.HOST ?? '0.0.0.0';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -66,7 +67,7 @@ async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
-  await app.listen(PORT);
+  await app.listen(PORT, HOST);
   console.log(`🚀 Payment API running on port ${PORT}`);
   console.log(`📍 Health: http://localhost:${PORT}/health`);
   console.log(`📦 Products: http://localhost:${PORT}/api/products`);

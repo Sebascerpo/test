@@ -19,6 +19,8 @@ npm install
 npm run start:dev
 ```
 
+Note: `DATABASE_SSL=false` for local Docker/Postgres. Set `DATABASE_SSL=true` only for managed databases that require SSL.
+
 ## Build
 
 ```bash
