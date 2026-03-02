@@ -6,7 +6,7 @@ import {
 } from "@/store/payment-store";
 import { PackageIcon } from "@/components/icons";
 
-const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
+const APP_CURRENCY = import.meta.env?.VITE_CURRENCY || "COP";
 
 const fmt = (p: number) =>
   new Intl.NumberFormat("es-CO", {

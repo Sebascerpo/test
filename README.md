@@ -2,6 +2,13 @@
 
 SPA + API for product checkout with resilient payment recovery flow.
 
+## Submission Links
+
+- Public repository: `https://github.com/Sebascerpo/test`
+- Frontend deployed URL: `PENDING_DEPLOYMENT_URL`
+- Backend deployed URL: `PENDING_DEPLOYMENT_URL`
+- Public API docs URL: `PENDING_DEPLOYMENT_URL/api/docs`
+
 ## Tech Stack
 
 - Frontend: React + Redux Toolkit + Vite
@@ -94,13 +101,21 @@ Core endpoints:
 
 ## Local Setup
 
-### 1) Database
+### 1) Full Stack (DB + Backend + Frontend)
 
 ```bash
-docker-compose up -d
+cd backend
+docker compose up --build
 ```
 
-### 2) Backend
+Services:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3002`
+- Swagger: `http://localhost:3002/api/docs`
+- PostgreSQL: `localhost:5432`
+
+### 2) Backend only (optional)
 
 ```bash
 cd backend
@@ -108,7 +123,7 @@ npm install
 npm run start:dev
 ```
 
-### 3) Frontend
+### 3) Frontend only (optional)
 
 ```bash
 cd frontend
@@ -135,6 +150,8 @@ npm run test
 npm run test:cov
 ```
 
+Note: Frontend uses Vitest + Testing Library (`jest-dom`) with Jest-compatible assertion style and thresholds `>= 80%`.
+
 Latest frontend coverage (`npm run test:cov`):
 
 - Statements: `96.42%`
@@ -147,6 +164,10 @@ Coverage target:
 - `>= 80%` (challenge requirement).
 
 ## Responsive / Browser Matrix
+
+Automated contract checks:
+
+- `frontend/src/features/responsive/ResponsiveContracts.spec.tsx`
 
 ### Viewports
 

@@ -2,7 +2,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@jest/globals";
 import { paymentInitialState, paymentReducer } from "@/store/payment-store";
 import { PaymentModal } from "@/features/checkout/components/PaymentModal";
 

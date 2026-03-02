@@ -61,7 +61,7 @@ export function TransactionNotification({
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
-      currency: import.meta.env.VITE_CURRENCY || "COP",
+      currency: import.meta.env?.VITE_CURRENCY || "COP",
       minimumFractionDigits: 0,
     }).format(p);
 

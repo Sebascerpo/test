@@ -1,14 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { processPaymentApi, syncTransactionStatusApi } from "@/lib/payment-api";
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  jest.restoreAllMocks();
 });
 
 describe("payment-api ROP flows", () => {
   it("processPaymentApi maps non-2xx responses to HTTP_ERROR", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
       json: async () => ({ message: "gateway down" }),
@@ -49,8 +49,8 @@ describe("payment-api ROP flows", () => {
   });
 
   it("processPaymentApi maps invalid success shape to INVALID_RESPONSE", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ success: true }),
     } as Response);
@@ -89,8 +89,8 @@ describe("payment-api ROP flows", () => {
   });
 
   it("processPaymentApi maps network exceptions to NETWORK_DROPPED", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
+    jest.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
+    jest.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
 
     const result = await processPaymentApi({
       reference: "TX-NET-1",
@@ -126,7 +126,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("returns OFFLINE failure without throwing", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    jest.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
 
     const result = await processPaymentApi({
       reference: "TX-OFF-1",
@@ -163,7 +163,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps retryable sync not-found-yet shape to TRANSACTION_NOT_FOUND", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
         success: true,
@@ -183,7 +183,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps successful sync response to transaction result", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
         success: true,
@@ -207,7 +207,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync non-2xx not-found response to TRANSACTION_NOT_FOUND", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 404,
       json: async () => ({ message: "transaction not found" }),
@@ -221,7 +221,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync non-2xx unknown errors to HTTP_ERROR", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 400,
       json: async () => ({ message: "bad request" }),
@@ -236,7 +236,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync malformed success shape to INVALID_RESPONSE", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ success: false }),
     } as Response);
@@ -249,7 +249,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync null transaction without retry hint to INVALID_RESPONSE", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
         success: true,
@@ -266,7 +266,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync null transaction with NOT_FOUND_YET reason to retryable not-found", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
         success: true,
@@ -285,7 +285,7 @@ describe("payment-api ROP flows", () => {
   });
 
   it("maps sync fetch exceptions to NETWORK_DROPPED", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
+    jest.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
 
     const result = await syncTransactionStatusApi("TX-NET");
     expect(result.ok).toBe(false);

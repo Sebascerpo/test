@@ -18,10 +18,10 @@ import { ValidationToast } from "@/components/ui/ValidationToast";
 import { transitions } from "@/lib/motion";
 
 const FEES = {
-  baseFee: Number(import.meta.env.VITE_BASE_FEE || 2500),
-  deliveryFee: Number(import.meta.env.VITE_DELIVERY_FEE || 5000),
+  baseFee: Number(import.meta.env?.VITE_BASE_FEE ?? 2500),
+  deliveryFee: Number(import.meta.env?.VITE_DELIVERY_FEE ?? 5000),
 };
-const APP_CURRENCY = import.meta.env.VITE_CURRENCY || "COP";
+const APP_CURRENCY = import.meta.env?.VITE_CURRENCY || "COP";
 
 interface BackdropSummaryProps {
   onBack: () => void;

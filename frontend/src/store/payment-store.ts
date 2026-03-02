@@ -14,7 +14,7 @@ import {
   PURGE,
   REGISTER,
 } from "redux-persist";
-import storage from "redux-persist/lib/storage";
+import storageImport from "redux-persist/lib/storage";
 import type { ApiFailure } from "@/lib/payment-api";
 import { processPaymentApi, syncTransactionStatusApi } from "@/lib/payment-api";
 
@@ -387,6 +387,10 @@ export const sanitizePaymentStateForPersistence = (
   isLoading: false,
   error: null,
 });
+
+const storage: typeof storageImport =
+  ((storageImport as { default?: typeof storageImport }).default ??
+    storageImport) as typeof storageImport;
 
 const persistConfig = {
   key: "payment-store-v5",

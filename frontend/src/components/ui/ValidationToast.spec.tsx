@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest } from "@jest/globals";
 import { ValidationToast } from "@/components/ui/ValidationToast";
 
 describe("ValidationToast tones", () => {
   it("uses declined tone by default", () => {
     render(
-      <ValidationToast message="Error de validación" onClear={vi.fn()} />,
+      <ValidationToast message="Error de validación" onClear={jest.fn()} />,
     );
 
     const text = screen.getByText("Error de validación");
@@ -17,7 +17,7 @@ describe("ValidationToast tones", () => {
     render(
       <ValidationToast
         message="Esperando reconexión"
-        onClear={vi.fn()}
+        onClear={jest.fn()}
         tone="pending"
       />,
     );
@@ -31,7 +31,7 @@ describe("ValidationToast tones", () => {
     render(
       <ValidationToast
         message="Pago aprobado"
-        onClear={vi.fn()}
+        onClear={jest.fn()}
         tone="approved"
       />,
     );

@@ -13,10 +13,10 @@ const productFixture = [
 ];
 
 export const handlers = [
-  http.get("/api/products", () => {
+  http.get("*/api/products", () => {
     return HttpResponse.json({ success: true, data: productFixture });
   }),
-  http.post("/api/payment/process", async () => {
+  http.post("*/api/payment/process", async () => {
     return HttpResponse.json({
       success: true,
       transaction: {
@@ -28,7 +28,7 @@ export const handlers = [
     });
   }),
   http.get(
-    "/api/transactions/reference/:reference/sync",
+    "*/api/transactions/reference/:reference/sync",
     ({ params }: { params: { reference: string } }) => {
     return HttpResponse.json({
       success: true,

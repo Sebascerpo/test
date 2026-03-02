@@ -1,5 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest } from "@jest/globals";
 import {
   detectCardBrand,
   formatCardNumber,
@@ -164,7 +164,7 @@ describe("payment-store security and resiliency", () => {
   });
 
   it("handles process payment API errors as fulfilled failure", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    const fetchSpy = jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
       json: async () => ({ message: "server error" }),
@@ -219,7 +219,7 @@ describe("payment-store security and resiliency", () => {
   });
 
   it("skips sync thunk when same reference is already syncing", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = jest.spyOn(globalThis, "fetch");
 
     const preloadedState = {
       payment: {
@@ -243,7 +243,7 @@ describe("payment-store security and resiliency", () => {
   });
 
   it("skips sync when no pending reference exists", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = jest.spyOn(globalThis, "fetch");
     const store = createTestStore();
 
     const action = (await store.dispatch(
@@ -257,7 +257,7 @@ describe("payment-store security and resiliency", () => {
   });
 
   it("skips sync when same reference was synced very recently", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const fetchSpy = jest.spyOn(globalThis, "fetch");
     const store = createTestStore({
       payment: {
         ...paymentInitialState,

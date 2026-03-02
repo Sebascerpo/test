@@ -2,7 +2,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { act } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { paymentInitialState, paymentReducer } from "@/store/payment-store";
 import { TransactionResultPage } from "@/features/transaction/components/TransactionResultPage";
 
@@ -66,18 +66,18 @@ function renderResultPage(
 
 describe("TransactionResultPage auto redirect", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    jest.useFakeTimers();
   });
   afterEach(() => {
-    vi.useRealTimers();
+    jest.useRealTimers();
   });
 
   it("auto redirects on terminal status with countdown", async () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
     renderResultPage("APPROVED", onDismiss);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5200);
+      await jest.advanceTimersByTimeAsync(5200);
     });
 
     expect(onDismiss).toHaveBeenCalledWith({
@@ -87,38 +87,38 @@ describe("TransactionResultPage auto redirect", () => {
   });
 
   it("does not auto redirect while status is pending", () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
     renderResultPage("PENDING", onDismiss);
 
     act(() => {
-      vi.advanceTimersByTime(10000);
+      jest.advanceTimersByTime(10000);
     });
 
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it("allows cancelling automatic redirect", () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
 
     renderResultPage("DECLINED", onDismiss);
 
     fireEvent.click(screen.getByRole("button", { name: /Quedarme aquí/i }));
     act(() => {
-      vi.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(6000);
     });
 
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it("renders approved copy for approved status", () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
     renderResultPage("APPROVED", onDismiss);
 
     expect(screen.getByText("¡Pago aprobado!")).toBeInTheDocument();
   });
 
   it("renders pending copy and pending action while transaction is pending", () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
     renderResultPage("PENDING", onDismiss);
 
     expect(screen.getByText("Verificando pago")).toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("TransactionResultPage auto redirect", () => {
   });
 
   it("renders declined copy for declined status", () => {
-    const onDismiss = vi.fn();
+    const onDismiss = jest.fn();
     renderResultPage("DECLINED", onDismiss);
 
     expect(screen.getByText("Pago rechazado")).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@jest/globals";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 function NetworkStatusProbe() {
