@@ -1,8 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   roots: ['<rootDir>/src'],
-  setupFiles: ['<rootDir>/src/test/bootstrap.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   moduleDirectories: ['node_modules'],
@@ -25,6 +24,7 @@ module.exports = {
   coverageProvider: 'v8',
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
+    '!src/test/**',
     '!src/App.tsx',
     '!src/main.tsx',
     '!src/components/icons.tsx',

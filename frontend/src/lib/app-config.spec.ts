@@ -43,4 +43,48 @@ describe("app-config", () => {
     const config = await fetchAppConfig();
     expect(config).toEqual(fallback);
   });
+
+  it("falls back when backend responds with non-OK status", async () => {
+    const fallback = getFallbackAppConfig();
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      json: async () => ({ success: true, data: {} }),
+    } as Response);
+
+    const config = await fetchAppConfig();
+    expect(config).toEqual(fallback);
+  });
+
+  it("falls back when payload shape is invalid", async () => {
+    const fallback = getFallbackAppConfig();
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: false }),
+    } as Response);
+
+    const config = await fetchAppConfig();
+    expect(config).toEqual(fallback);
+  });
+
+  it("sanitizes invalid numeric and empty currency values", async () => {
+    const fallback = getFallbackAppConfig();
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          currency: "",
+          baseFee: "abc",
+          deliveryFee: "6000",
+        },
+      }),
+    } as Response);
+
+    const config = await fetchAppConfig();
+    expect(config).toEqual({
+      currency: fallback.currency,
+      baseFee: fallback.baseFee,
+      deliveryFee: 6000,
+    });
+  });
 });
