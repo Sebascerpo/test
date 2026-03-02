@@ -1,11 +1,76 @@
-import { JSDOM } from "jsdom";
+import { TextEncoder, TextDecoder } from "node:util";
+import {
+  ReadableStream,
+  TransformStream,
+  WritableStream,
+} from "node:stream/web";
+import { Blob, File } from "node:buffer";
 
-const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-  url: "http://localhost/",
-});
+// Required by msw/node + undici in Jest jsdom environment
+if (!globalThis.TextEncoder) {
+  globalThis.TextEncoder = TextEncoder as typeof globalThis.TextEncoder;
+}
 
+if (!globalThis.TextDecoder) {
+  globalThis.TextDecoder = TextDecoder as typeof globalThis.TextDecoder;
+}
+
+if (!globalThis.ReadableStream) {
+  globalThis.ReadableStream =
+    ReadableStream as typeof globalThis.ReadableStream;
+}
+
+if (!globalThis.TransformStream) {
+  globalThis.TransformStream =
+    TransformStream as typeof globalThis.TransformStream;
+}
+
+if (!globalThis.WritableStream) {
+  globalThis.WritableStream = WritableStream as typeof globalThis.WritableStream;
+}
+
+if (!globalThis.Blob) {
+  globalThis.Blob = Blob as typeof globalThis.Blob;
+}
+
+if (!globalThis.File) {
+  globalThis.File = File as typeof globalThis.File;
+}
+
+if (!globalThis.BroadcastChannel) {
+  class MockBroadcastChannel implements BroadcastChannel {
+    name: string;
+    onmessage: ((this: BroadcastChannel, ev: MessageEvent) => unknown) | null =
+      null;
+    onmessageerror:
+      | ((this: BroadcastChannel, ev: MessageEvent) => unknown)
+      | null = null;
+
+    constructor(name: string) {
+      this.name = name;
+    }
+
+    postMessage(): void {}
+
+    close(): void {}
+
+    addEventListener(): void {}
+
+    removeEventListener(): void {}
+
+    dispatchEvent(): boolean {
+      return true;
+    }
+  }
+
+  globalThis.BroadcastChannel =
+    MockBroadcastChannel as typeof globalThis.BroadcastChannel;
+}
+
+// Mock de Storage en memoria
 const createMemoryStorage = () => {
   const store = new Map<string, string>();
+
   return {
     getItem: (key: string) => store.get(key) ?? null,
     setItem: (key: string, value: string) => {
@@ -24,26 +89,16 @@ const createMemoryStorage = () => {
   };
 };
 
-const localStorageMock = createMemoryStorage();
-const sessionStorageMock = createMemoryStorage();
-
-Object.assign(globalThis, {
-  window: dom.window,
-  document: dom.window.document,
-  self: dom.window,
-  navigator: dom.window.navigator,
-  Event: dom.window.Event,
-  CustomEvent: dom.window.CustomEvent,
-  Element: dom.window.Element,
-  HTMLElement: dom.window.HTMLElement,
-  SVGElement: dom.window.SVGElement,
-  Node: dom.window.Node,
-  localStorage: localStorageMock,
-  sessionStorage: sessionStorageMock,
-  requestAnimationFrame: (cb: FrameRequestCallback) => setTimeout(cb, 0),
-  cancelAnimationFrame: (id: number) => clearTimeout(id),
+Object.defineProperty(window, "localStorage", {
+  value: createMemoryStorage(),
 });
 
-if (typeof globalThis.fetch === "function") {
-  globalThis.fetch = globalThis.fetch.bind(globalThis);
-}
+Object.defineProperty(window, "sessionStorage", {
+  value: createMemoryStorage(),
+});
+
+// requestAnimationFrame mock
+globalThis.requestAnimationFrame = (cb: FrameRequestCallback) =>
+  setTimeout(cb, 0);
+
+globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);

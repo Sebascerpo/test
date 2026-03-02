@@ -17,6 +17,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ValidationToast } from "@/components/ui/ValidationToast";
 import { transitions } from "@/lib/motion";
 import { useAppConfig } from "@/lib/app-config";
+import { SummaryRow } from "@/features/checkout/components/summary/SummaryRow";
 
 interface BackdropSummaryProps {
   onBack: () => void;
@@ -28,31 +29,6 @@ const fmt = (p: number, currency: string) =>
     currency,
     minimumFractionDigits: 0,
   }).format(p);
-
-function Row({
-  label,
-  value,
-  total,
-}: {
-  label: string;
-  value: string;
-  total?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between py-2.5 border-b border-border last:border-0 ${
-        total ? "font-semibold" : ""
-      }`}
-    >
-      <span className={total ? "text-[15px]" : "text-sm text-muted-foreground"}>
-        {label}
-      </span>
-      <span className={total ? "text-[18px] tracking-tight" : "text-sm"}>
-        {value}
-      </span>
-    </div>
-  );
-}
 
 export function BackdropSummary({ onBack }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
@@ -208,19 +184,19 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
 
           {/* Breakdown */}
           <div className="rounded-2xl border border-border px-4 py-1 surface-elevated shadow-xs">
-            <Row
+            <SummaryRow
               label={`Producto (${quantity})`}
               value={fmt(selectedProduct.price * quantity, appConfig.currency)}
             />
-            <Row
+            <SummaryRow
               label="Tarifa de servicio"
               value={fmt(appConfig.baseFee, appConfig.currency)}
             />
-            <Row
+            <SummaryRow
               label="Costo de envío"
               value={fmt(appConfig.deliveryFee, appConfig.currency)}
             />
-            <Row label="Total" value={fmt(total, appConfig.currency)} total />
+            <SummaryRow label="Total" value={fmt(total, appConfig.currency)} total />
           </div>
 
           {/* Trust */}

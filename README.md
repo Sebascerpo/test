@@ -5,15 +5,22 @@ SPA + API for product checkout with resilient payment recovery flow.
 ## Submission Links
 
 - Public repository: `https://github.com/Sebascerpo/test`
-- Frontend deployed URL: `PENDING_DEPLOYMENT_URL`
-- Backend deployed URL: `PENDING_DEPLOYMENT_URL`
-- Public API docs URL: `PENDING_DEPLOYMENT_URL/api/docs`
+- Frontend deployed URL: `https://d31hbsczosda21.cloudfront.net/`
+- Backend deployed URL: `https://d31hbsczosda21.cloudfront.net/api`
+- Public API docs URL: `https://d31hbsczosda21.cloudfront.net/api/docs`
+
+Note: Production routing serves frontend and API behind the same CloudFront domain (`/api/*`).
 
 ## Tech Stack
 
 - Frontend: React + Redux Toolkit + Vite
 - Backend: NestJS + TypeScript
 - Database: PostgreSQL + TypeORM
+
+## Module Docs
+
+- Frontend guide: `frontend/README.md`
+- Backend guide: `backend/README.md`
 
 ## Backend Architecture
 
@@ -45,7 +52,8 @@ Tables:
 
 Swagger UI:
 
-- `http://localhost:3002/api/docs`
+- Public: `https://d31hbsczosda21.cloudfront.net/api/docs`
+- Local: `http://localhost:3002/api/docs`
 
 Core endpoints:
 
@@ -102,6 +110,13 @@ Core endpoints:
 
 ## Local Setup
 
+### 0) Configure environment files
+
+```bash
+cp backend/.env.template backend/.env
+cp frontend/.env.template frontend/.env
+```
+
 ### 1) Full Stack (DB + Backend + Frontend)
 
 ```bash
@@ -152,16 +167,29 @@ npm run test:cov
 
 Note: Frontend uses Jest + Testing Library (`jest-dom`) with thresholds `>= 80%`.
 
-Latest frontend coverage (`npm run test:cov`):
+Latest frontend test run (`cd frontend && npm run test:cov` on March 2, 2026):
 
-- Statements: `98.16%`
-- Branches: `83.01%`
-- Functions: `94.28%`
-- Lines: `98.16%`
+- Test suites: `14 passed, 14 total`
+- Tests: `63 passed, 63 total`
+- Snapshots: `0 total`
+
+Latest frontend coverage:
+
+- Statements: `98.39%`
+- Branches: `84.65%`
+- Functions: `97.56%`
+- Lines: `98.39%`
 
 Coverage target:
 
 - `>= 80%` (challenge requirement).
+
+Latest backend coverage (`cd backend && npm run test:cov` on March 2, 2026):
+
+- Statements: `98.96%`
+- Branches: `92.72%`
+- Functions: `100%`
+- Lines: `98.87%`
 
 ## Responsive / Browser Matrix
 
@@ -198,4 +226,4 @@ Automated contract checks:
 
 - Backend is the source of truth for checkout config (`APP_CURRENCY`, `APP_BASE_FEE`, `APP_DELIVERY_FEE`).
 - Frontend consumes runtime config via `GET /api/app/config` and falls back to `VITE_*` only if needed.
-- Product seeder converges to 10 catalog products with image URLs, idempotently by product `name`.
+- Product seeder converges to 7 catalog products with image URLs, idempotently by product `name`.

@@ -72,12 +72,12 @@ describe("TransactionResultPage auto redirect", () => {
     jest.useRealTimers();
   });
 
-  it("auto redirects on terminal status with countdown", async () => {
+  it("auto redirects on terminal status with countdown", () => {
     const onDismiss = jest.fn();
     renderResultPage("APPROVED", onDismiss);
 
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5200);
+    act(() => {
+      jest.advanceTimersByTime(5200);
     });
 
     expect(onDismiss).toHaveBeenCalledWith({

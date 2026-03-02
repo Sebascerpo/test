@@ -1,6 +1,6 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  testEnvironment: 'node',
+  testEnvironment: '<rootDir>/src/test/jest.environment.cjs',
   roots: ['<rootDir>/src'],
   setupFiles: ['<rootDir>/src/test/bootstrap.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
