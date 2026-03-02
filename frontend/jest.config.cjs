@@ -1,7 +1,8 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   roots: ['<rootDir>/src'],
+  setupFiles: ['<rootDir>/src/test/bootstrap.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   moduleDirectories: ['node_modules'],
