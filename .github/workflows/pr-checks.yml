@@ -3,6 +3,10 @@ name: PR Checks
 on:
   pull_request:
     branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test-backend:
@@ -39,7 +43,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      - run: npm run test:coverage 2>/dev/null || npm run test -- --coverage
+      - run: npm run test:cov
 
   lint-backend:
     name: Backend Lint
