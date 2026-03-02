@@ -6,7 +6,7 @@ SPA + API for product checkout with resilient payment recovery flow.
 
 - Public repository: `https://github.com/Sebascerpo/test`
 - Frontend deployed URL: `https://d31hbsczosda21.cloudfront.net/`
-- Backend deployed URL: `https://d31hbsczosda21.cloudfront.net/api`
+- Backend deployed URL: `http://payment-store-alb-1512441505.us-east-1.elb.amazonaws.com/health`
 - Public API docs URL: `https://d31hbsczosda21.cloudfront.net/api/docs`
 
 Note: Production routing serves frontend and API behind the same CloudFront domain (`/api/*`).
@@ -80,6 +80,71 @@ Core endpoints:
 4. Backend creates/updates delivery assignment when status is final.
 5. Backend decrements stock only if transaction is `APPROVED`.
 6. Frontend consumes final status and returns to product page with updated stock.
+
+## UAT in Production
+
+Date: March 2, 2026
+
+- Frontend: `https://d31hbsczosda21.cloudfront.net/`
+- Backend (proxy): `https://d31hbsczosda21.cloudfront.net/api`
+- Swagger: `https://d31hbsczosda21.cloudfront.net/api/docs`
+
+### E2E Case 1 - Approved payment
+
+Steps:
+
+1. Open catalog and select a product with stock.
+2. Complete card + delivery data.
+3. Click `Pagar` in summary.
+4. Wait for final status.
+5. Return to product page and verify updated stock.
+
+Expected:
+
+- Backend creates `PENDING` transaction first.
+- Payment resolves to terminal state.
+- Delivery assignment is created.
+- Stock updates only on `APPROVED`.
+
+Result:
+
+- PASS (validated in deployed environment).
+- For approved-flow validation in current sandbox tests, use card number `4242424242424242`.
+
+### E2E Case 2 - Refresh during pending transaction
+
+Steps:
+
+1. Click `Pagar`.
+2. Refresh page while transaction is still pending.
+3. Verify recovery to final transaction status.
+
+Expected:
+
+- No duplicate charge flow.
+- Pending reference is recovered from persisted state.
+- Frontend syncs status and shows final result.
+
+Result:
+
+- PASS (validated in deployed environment).
+
+### E2E Case 3 - Offline during checkout
+
+Steps:
+
+1. Reach summary step.
+2. Disable network and click `Pagar`.
+
+Expected:
+
+- UI does not freeze.
+- Structured error/feedback shown in Spanish.
+- Checkout context remains recoverable.
+
+Result:
+
+- PASS (validated in deployed environment).
 
 ## Resilience / Recovery
 

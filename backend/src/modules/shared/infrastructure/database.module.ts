@@ -7,15 +7,23 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => {
+        const databaseHost = config.get<string>('DATABASE_HOST', 'localhost');
         const databasePort = Number(
           config.get<string>('DATABASE_PORT', '5432'),
         );
+        const databaseSslEnv = config.get<string>('DATABASE_SSL');
+        const localHosts = new Set(['localhost', '127.0.0.1', 'postgres']);
+        const shouldUseSslByDefault = !localHosts.has(
+          databaseHost.toLowerCase(),
+        );
         const databaseSsl =
-          config.get<string>('DATABASE_SSL', 'false').toLowerCase() === 'true';
+          typeof databaseSslEnv === 'string'
+            ? databaseSslEnv.toLowerCase() === 'true'
+            : shouldUseSslByDefault;
 
         return {
           type: 'postgres',
-          host: config.get<string>('DATABASE_HOST', 'localhost'),
+          host: databaseHost,
           port: Number.isFinite(databasePort) ? databasePort : 5432,
           username: config.get<string>('DATABASE_USERNAME', 'payment_user'),
           password: config.get<string>('DATABASE_PASSWORD', 'payment_password'),
