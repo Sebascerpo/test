@@ -9,29 +9,29 @@ import {
 @Entity('products')
 export class ProductOrmEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column()
-  name: string;
+  name!: string;
 
   @Column('text')
-  description: string;
+  description!: string;
 
   @Column('integer')
-  price: number;
+  price!: number;
 
   @Column('integer')
-  stock: number;
+  stock!: number;
 
   @Column({ name: 'image_url', nullable: true })
-  imageUrl: string;
+  imageUrl!: string;
 
   @Column({ nullable: true })
-  category: string;
+  category!: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

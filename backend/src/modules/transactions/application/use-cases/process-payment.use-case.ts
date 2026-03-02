@@ -38,6 +38,95 @@ export type ProcessPaymentUseCase = (
   input: ProcessPaymentInput,
 ) => ResultAsync<ProcessPaymentResult>;
 
+interface PaymentExecutionContext {
+  amountInCents: number;
+  customerEmail: string;
+  pendingReference: string;
+  cardInfo: CardTokenizationInput;
+}
+
+interface ExternalPaymentOutcome {
+  status: TransactionStatus;
+  externalTransactionId?: string;
+  externalReference?: string;
+  errorMessage?: string;
+}
+
+const mapExternalStatusToTransactionStatus = (
+  externalStatus: 'PENDING' | 'APPROVED' | 'DECLINED' | 'ERROR',
+): TransactionStatus => {
+  switch (externalStatus) {
+    case 'APPROVED':
+      return TransactionStatus.APPROVED;
+    case 'DECLINED':
+      return TransactionStatus.DECLINED;
+    case 'PENDING':
+      return TransactionStatus.PENDING;
+    default:
+      return TransactionStatus.ERROR;
+  }
+};
+
+const buildErrorOutcome = (errorMessage: string): ExternalPaymentOutcome => ({
+  status: TransactionStatus.ERROR,
+  errorMessage,
+});
+
+const resolveExternalPaymentOutcome = async (
+  paymentGateway: PaymentGatewayPort,
+  paymentConfig: PaymentConfig,
+  context: PaymentExecutionContext,
+): Promise<ExternalPaymentOutcome> => {
+  const tokenResult = await paymentGateway.tokenizeCard(context.cardInfo);
+  if (!tokenResult.success) {
+    return buildErrorOutcome(
+      `Tokenization failed: ${tokenResult.error.message}`,
+    );
+  }
+
+  const acceptanceTokenResult = await paymentGateway.getAcceptanceToken();
+  if (!acceptanceTokenResult.success) {
+    return buildErrorOutcome(
+      `Failed to get acceptance token: ${acceptanceTokenResult.error.message}`,
+    );
+  }
+
+  const paymentSourceResult = await paymentGateway.createPaymentSource({
+    type: 'CARD',
+    token: tokenResult.value.token,
+    customer_email: context.customerEmail,
+    acceptance_token: acceptanceTokenResult.value,
+  });
+  if (!paymentSourceResult.success) {
+    return buildErrorOutcome(
+      `Failed to create payment source: ${paymentSourceResult.error.message}`,
+    );
+  }
+
+  const signature = paymentGateway.generateSignature(
+    context.pendingReference,
+    context.amountInCents,
+  );
+  const externalResult = await paymentGateway.createTransaction({
+    amount_in_cents: context.amountInCents,
+    currency: paymentConfig.currency,
+    customer_email: context.customerEmail,
+    payment_source_id: paymentSourceResult.value.id,
+    reference: context.pendingReference,
+    signature,
+    installments: 1,
+  });
+  if (!externalResult.success) {
+    return buildErrorOutcome(externalResult.error.message);
+  }
+
+  return {
+    status: mapExternalStatusToTransactionStatus(externalResult.value.status),
+    externalTransactionId: externalResult.value.id,
+    externalReference: externalResult.value.reference,
+  };
+};
+
 export const createProcessPaymentUseCase = (
   transactionRepository: TransactionRepositoryPort,
   paymentGateway: PaymentGatewayPort,
@@ -59,90 +148,35 @@ export const createProcessPaymentUseCase = (
       }
     }
 
-    const initResult = await paymentCoordinator.initializePendingPayment({
-      reference: input.reference,
-      productId: input.productId,
-      quantity: input.quantity,
-      deliveryInfo: input.deliveryInfo,
-      baseFee: paymentConfig.baseFee,
-      deliveryFee: paymentConfig.deliveryFee,
-    });
-    if (!initResult.success) return err(initResult.error);
+    const initializationResult =
+      await paymentCoordinator.initializePendingPayment({
+        reference: input.reference,
+        productId: input.productId,
+        quantity: input.quantity,
+        deliveryInfo: input.deliveryInfo,
+        baseFee: paymentConfig.baseFee,
+        deliveryFee: paymentConfig.deliveryFee,
+      });
+    if (!initializationResult.success) return err(initializationResult.error);
 
-    const pendingTransaction = initResult.value.transaction;
-    const customerEmail = initResult.value.customerEmail;
-    const amountInCents = Math.round(pendingTransaction.totalAmount * 100);
-
-    let finalStatus: TransactionStatus = TransactionStatus.PENDING;
-    let externalTransactionId: string | undefined;
-    let externalReference: string | undefined;
-    let errorMessage: string | undefined;
-
-    const tokenResult = await paymentGateway.tokenizeCard(input.cardInfo);
-    if (!tokenResult.success) {
-      finalStatus = TransactionStatus.ERROR;
-      errorMessage = `Tokenization failed: ${tokenResult.error.message}`;
-    } else {
-      const acceptanceTokenResult = await paymentGateway.getAcceptanceToken();
-      if (!acceptanceTokenResult.success) {
-        finalStatus = TransactionStatus.ERROR;
-        errorMessage = `Failed to get acceptance token: ${acceptanceTokenResult.error.message}`;
-      } else {
-        const paymentSourceResult = await paymentGateway.createPaymentSource({
-          type: 'CARD',
-          token: tokenResult.value.token,
-          customer_email: customerEmail,
-          acceptance_token: acceptanceTokenResult.value,
-        });
-        if (!paymentSourceResult.success) {
-          finalStatus = TransactionStatus.ERROR;
-          errorMessage = `Failed to create payment source: ${paymentSourceResult.error.message}`;
-        } else {
-          const signature = paymentGateway.generateSignature(
-            pendingTransaction.reference,
-            amountInCents,
-          );
-          const externalResult = await paymentGateway.createTransaction({
-            amount_in_cents: amountInCents,
-            currency: paymentConfig.currency,
-            customer_email: customerEmail,
-            payment_source_id: paymentSourceResult.value.id,
-            reference: pendingTransaction.reference,
-            signature,
-            installments: 1,
-          });
-
-          if (!externalResult.success) {
-            finalStatus = TransactionStatus.ERROR;
-            errorMessage = externalResult.error.message;
-          } else {
-            externalTransactionId = externalResult.value.id;
-            externalReference = externalResult.value.reference;
-            switch (externalResult.value.status) {
-              case 'APPROVED':
-                finalStatus = TransactionStatus.APPROVED;
-                break;
-              case 'DECLINED':
-                finalStatus = TransactionStatus.DECLINED;
-                break;
-              case 'PENDING':
-                finalStatus = TransactionStatus.PENDING;
-                break;
-              default:
-                finalStatus = TransactionStatus.ERROR;
-                break;
-            }
-          }
-        }
-      }
-    }
+    const pendingTransaction = initializationResult.value.transaction;
+    const externalOutcome = await resolveExternalPaymentOutcome(
+      paymentGateway,
+      paymentConfig,
+      {
+        amountInCents: Math.round(pendingTransaction.totalAmount * 100),
+        customerEmail: initializationResult.value.customerEmail,
+        pendingReference: pendingTransaction.reference,
+        cardInfo: input.cardInfo,
+      },
+    );
 
     const finalizeResult = await paymentCoordinator.finalizePayment({
       transactionId: pendingTransaction.id,
-      status: finalStatus,
-      externalTransactionId,
-      externalReference,
-      errorMessage,
+      status: externalOutcome.status,
+      externalTransactionId: externalOutcome.externalTransactionId,
+      externalReference: externalOutcome.externalReference,
+      errorMessage: externalOutcome.errorMessage,
     });
     if (!finalizeResult.success) return err(finalizeResult.error);
 

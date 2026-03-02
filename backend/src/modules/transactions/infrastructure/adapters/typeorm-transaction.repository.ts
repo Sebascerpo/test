@@ -83,8 +83,8 @@ export class TypeOrmTransactionRepository implements TransactionRepositoryPort {
 
   private toDomain = (entity: TransactionOrmEntity): Transaction => {
     return {
-      id: entity.id,
-      reference: entity.reference,
+      id: entity.id!,
+      reference: entity.reference!,
       productId: entity.productId,
       customerId: entity.customerId,
       quantity: entity.quantity,

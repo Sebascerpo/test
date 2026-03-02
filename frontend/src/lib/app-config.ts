@@ -12,15 +12,29 @@ const FALLBACK_CONFIG: AppConfig = {
   deliveryFee: Number(import.meta.env?.VITE_DELIVERY_FEE || 5000),
 };
 
-const sanitizeConfig = (config: Partial<AppConfig>): AppConfig => {
-  const baseFee = Number(config.baseFee);
-  const deliveryFee = Number(config.deliveryFee);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getFiniteNumber = (value: unknown, fallback: number): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const sanitizeConfig = (config: unknown): AppConfig => {
+  if (!isRecord(config)) return FALLBACK_CONFIG;
+
+  const currency =
+    typeof config.currency === "string" && config.currency.trim().length > 0
+      ? config.currency
+      : FALLBACK_CONFIG.currency;
+
   return {
-    currency: config.currency || FALLBACK_CONFIG.currency,
-    baseFee: Number.isFinite(baseFee) ? baseFee : FALLBACK_CONFIG.baseFee,
-    deliveryFee: Number.isFinite(deliveryFee)
-      ? deliveryFee
-      : FALLBACK_CONFIG.deliveryFee,
+    currency,
+    baseFee: getFiniteNumber(config.baseFee, FALLBACK_CONFIG.baseFee),
+    deliveryFee: getFiniteNumber(
+      config.deliveryFee,
+      FALLBACK_CONFIG.deliveryFee,
+    ),
   };
 };
 
@@ -38,8 +52,9 @@ export const fetchAppConfig = async (): Promise<AppConfig> => {
       const response = await fetch("/api/app/config");
       if (!response.ok) return FALLBACK_CONFIG;
 
-      const payload = await response.json().catch(() => null);
-      if (!payload?.success || !payload?.data) return FALLBACK_CONFIG;
+      const payload: unknown = await response.json().catch(() => null);
+      if (!isRecord(payload) || payload.success !== true || !("data" in payload))
+        return FALLBACK_CONFIG;
 
       const resolvedConfig = sanitizeConfig(payload.data);
       cachedConfig = resolvedConfig;

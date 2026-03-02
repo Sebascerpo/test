@@ -10,45 +10,45 @@ import { DeliveryStatus } from '../../domain/delivery.entity';
 @Entity('deliveries')
 export class DeliveryOrmEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', name: 'transaction_id', unique: true })
-  transactionId: string;
+  transactionId!: string;
 
   @Column({ type: 'varchar', name: 'transaction_reference', unique: true })
-  transactionReference: string;
+  transactionReference!: string;
 
   @Column({ type: 'varchar', name: 'product_id' })
-  productId: string;
+  productId!: string;
 
   @Column({ type: 'varchar', name: 'customer_id' })
-  customerId: string;
+  customerId!: string;
 
   @Column({ name: 'address_snapshot', type: 'text' })
-  addressSnapshot: string;
+  addressSnapshot!: string;
 
   @Column({ type: 'varchar', name: 'city_snapshot' })
-  citySnapshot: string;
+  citySnapshot!: string;
 
   @Column({ type: 'varchar', name: 'postal_code_snapshot', nullable: true })
-  postalCodeSnapshot: string;
+  postalCodeSnapshot!: string;
 
   @Column({
     type: 'enum',
     enum: DeliveryStatus,
     default: DeliveryStatus.ASSIGNED,
   })
-  status: DeliveryStatus;
+  status: DeliveryStatus = DeliveryStatus.ASSIGNED;
 
   @Column({ name: 'assigned_at', type: 'timestamp' })
-  assignedAt: Date;
+  assignedAt!: Date;
 
   @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
-  deliveredAt: Date | null;
+  deliveredAt: Date | null = null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

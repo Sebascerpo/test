@@ -9,35 +9,35 @@ import {
 @Entity('customers')
 export class CustomerOrmEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', name: 'full_name' })
-  fullName: string;
+  fullName!: string;
 
   @Column({ type: 'varchar', unique: true })
-  email: string;
+  email!: string;
 
   @Column({ type: 'varchar', nullable: true })
-  phone: string;
+  phone!: string;
 
   @Column({ type: 'varchar', name: 'document_type', nullable: true })
-  documentType: string | null;
+  documentType: string | null = null;
 
   @Column({ type: 'varchar', name: 'document_number', nullable: true })
-  documentNumber: string | null;
+  documentNumber: string | null = null;
 
   @Column({ type: 'text', nullable: true })
-  address: string;
+  address!: string;
 
   @Column({ type: 'varchar', nullable: true })
-  city: string;
+  city!: string;
 
   @Column({ type: 'varchar', name: 'postal_code', nullable: true })
-  postalCode: string;
+  postalCode!: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

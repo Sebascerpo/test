@@ -15,7 +15,9 @@ export class AppConfigController {
   @ApiOkResponse({ type: AppConfigResponseDto })
   getConfig(): AppConfigResponseDto {
     const currency = this.configService.get<string>('APP_CURRENCY', 'COP');
-    const baseFee = Number(this.configService.get<string>('APP_BASE_FEE', '2500'));
+    const baseFee = Number(
+      this.configService.get<string>('APP_BASE_FEE', '2500'),
+    );
     const deliveryFee = Number(
       this.configService.get<string>('APP_DELIVERY_FEE', '5000'),
     );

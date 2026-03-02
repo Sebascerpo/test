@@ -13,38 +13,38 @@ import {
 @Entity('transactions')
 export class TransactionOrmEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  reference: string;
+  reference!: string;
 
   @Column({ name: 'product_id' })
-  productId: string;
+  productId!: string;
 
   @Column({ name: 'customer_id' })
-  customerId: string;
+  customerId!: string;
 
   @Column('integer')
-  quantity: number;
+  quantity!: number;
 
   @Column('integer')
-  amount: number;
+  amount!: number;
 
   @Column('integer', { name: 'base_fee' })
-  baseFee: number;
+  baseFee!: number;
 
   @Column('integer', { name: 'delivery_fee' })
-  deliveryFee: number;
+  deliveryFee!: number;
 
   @Column('integer', { name: 'total_amount' })
-  totalAmount: number;
+  totalAmount!: number;
 
   @Column({
     type: 'enum',
     enum: TransactionStatus,
     default: TransactionStatus.PENDING,
   })
-  status: TransactionStatus;
+  status: TransactionStatus = TransactionStatus.PENDING;
 
   @Column({
     type: 'enum',
@@ -52,20 +52,20 @@ export class TransactionOrmEntity {
     default: PaymentMethod.CREDIT_CARD,
     name: 'payment_method',
   })
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod = PaymentMethod.CREDIT_CARD;
 
   @Column({ type: 'varchar', name: 'external_transaction_id', nullable: true })
-  externalTransactionId: string | null;
+  externalTransactionId: string | null = null;
 
   @Column({ type: 'varchar', name: 'external_reference', nullable: true })
-  externalReference: string | null;
+  externalReference: string | null = null;
 
   @Column({ name: 'error_message', type: 'text', nullable: true })
-  errorMessage: string | null;
+  errorMessage: string | null = null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
