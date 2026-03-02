@@ -107,7 +107,7 @@ describe("PaymentModal card security handling", () => {
       </Provider>,
     );
 
-    await user.click(screen.getByRole("button", { name: /envío/i }));
+    await user.click(screen.getByRole("button", { name: /^envío$/i }));
 
     expect(
       screen.getByText("Primero debes completar los datos de la tarjeta"),
