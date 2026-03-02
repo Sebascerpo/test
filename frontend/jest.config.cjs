@@ -5,14 +5,14 @@ module.exports = {
   setupFiles: ['<rootDir>/src/test/bootstrap.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
-  moduleDirectories: ['node_modules', '<rootDir>/../backend/node_modules'],
+  moduleDirectories: ['node_modules'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': '<rootDir>/src/test/styleMock.ts',
   },
   transform: {
     '^.+\\.(ts|tsx)$': [
-      '<rootDir>/../backend/node_modules/ts-jest',
+      'ts-jest',
       {
         useESM: true,
         tsconfig: '<rootDir>/tsconfig.jest.json',

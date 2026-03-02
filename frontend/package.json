@@ -9,9 +9,9 @@
     "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "sh -c 'if [ -f ./node_modules/jest/bin/jest.js ]; then node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --detectOpenHandles; else NODE_PATH=../backend/node_modules node --experimental-vm-modules ../backend/node_modules/jest/bin/jest.js --config ./jest.config.cjs --runInBand --detectOpenHandles; fi'",
-    "test:watch": "sh -c 'if [ -f ./node_modules/jest/bin/jest.js ]; then node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch; else NODE_PATH=../backend/node_modules node --experimental-vm-modules ../backend/node_modules/jest/bin/jest.js --config ./jest.config.cjs --watch; fi'",
-    "test:cov": "sh -c 'if [ -f ./node_modules/jest/bin/jest.js ]; then node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --runInBand --detectOpenHandles; else NODE_PATH=../backend/node_modules node --experimental-vm-modules ../backend/node_modules/jest/bin/jest.js --config ./jest.config.cjs --coverage --runInBand --detectOpenHandles; fi'"
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --runInBand --detectOpenHandles",
+    "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --watch",
+    "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./jest.config.cjs --coverage --runInBand --detectOpenHandles"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
