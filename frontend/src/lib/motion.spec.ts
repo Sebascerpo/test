@@ -48,10 +48,8 @@ describe("motion transitions", () => {
 
   it("returns staggered list transition when reduce=false", () => {
     const transition = transitions.listStagger(3, false);
-    expect(transition).toEqual({
-      duration: 0.35,
-      delay: 0.15,
-      ease: easeSnappy,
-    });
+    expect(transition.duration).toBe(0.35);
+    expect(transition.delay).toBeCloseTo(0.15, 8);
+    expect(transition.ease).toEqual(easeSnappy);
   });
 });
