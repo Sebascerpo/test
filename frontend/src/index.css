@@ -350,6 +350,51 @@
   box-shadow: none;
 }
 
+/* Premium pay CTA */
+.sc-btn-pay {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, oklch(0.82 0.12 188) 32%, transparent);
+  background:
+    radial-gradient(
+      120% 140% at 8% 8%,
+      oklch(0.76 0.13 205 / 0.75) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      128deg,
+      oklch(0.39 0.09 232) 0%,
+      oklch(0.44 0.09 210) 48%,
+      oklch(0.49 0.11 182) 100%
+    );
+  box-shadow:
+    0 20px 34px -18px oklch(0.28 0.09 224 / 0.62),
+    0 8px 16px -8px oklch(0.25 0.08 200 / 0.44);
+}
+.sc-btn-pay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 15%,
+    oklch(1 0 0 / 0.2) 45%,
+    transparent 75%
+  );
+  transform: translateX(-140%);
+  transition: transform var(--dur-slow) var(--ease-smooth);
+  pointer-events: none;
+}
+.sc-btn-pay:hover::after {
+  transform: translateX(140%);
+}
+.sc-btn-pay:hover {
+  filter: saturate(1.08) brightness(1.03);
+}
+.sc-btn-pay:disabled::after {
+  display: none;
+}
+
 /* Label */
 .sc-label {
   font-size: 0.75rem;

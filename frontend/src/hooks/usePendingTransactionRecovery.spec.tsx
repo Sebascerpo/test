@@ -12,7 +12,7 @@ function RecoveryProbe() {
 }
 
 describe("usePendingTransactionRecovery", () => {
-  it("moves to result and avoids duplicate immediate sync calls in StrictMode", async () => {
+  it("keeps summary and avoids duplicate immediate sync calls in StrictMode", async () => {
     const fetchSpy = jest.spyOn(globalThis, "fetch");
 
     const store = configureStore({
@@ -35,7 +35,7 @@ describe("usePendingTransactionRecovery", () => {
     );
 
     await waitFor(() => {
-      expect((store.getState() as any).payment.currentStep).toBe("result");
+      expect((store.getState() as any).payment.currentStep).toBe("summary");
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 

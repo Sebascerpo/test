@@ -7,3 +7,4 @@ build/
 coverage/
 backend/coverage/
 .env
+card/

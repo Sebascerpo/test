@@ -77,6 +77,7 @@ export function CardFormSection({
         holderName={holderName}
         expiry={expiry}
         brand={brand}
+        cvc={cvc}
         isFlipped={showCvc}
       />
 

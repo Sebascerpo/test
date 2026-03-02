@@ -150,7 +150,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto sheet-scroll px-5 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto sheet-scroll overscroll-contain px-5 py-5 space-y-4">
           {/* Product */}
           <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-muted border border-border">
             <div className="w-11 h-11 rounded-xl bg-background border border-border flex items-center justify-center flex-shrink-0">
@@ -287,7 +287,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           <motion.button
             onClick={handlePay}
             disabled={tapped || !isOnline || isLoading}
-            className={`sc-btn-primary ${!isOnline || tapped || isLoading ? "opacity-50 cursor-not-allowed grayscale" : ""} ${isOnline && !isLoading ? "hover:brightness-[1.03]" : ""}`}
+            className={`sc-btn-primary sc-btn-pay ${!isOnline || tapped || isLoading ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
             whileTap={
               isOnline && !isLoading && !shouldReduceMotion
                 ? transitions.buttonPress

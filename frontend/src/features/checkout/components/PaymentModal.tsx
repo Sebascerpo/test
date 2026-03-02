@@ -333,10 +333,13 @@ export function PaymentModal({
                 <button
                   key={entryTab}
                   onClick={() => {
-                    if (entryTab === "delivery" && !cardValid()) return;
+                    if (entryTab === "delivery" && !cardValid()) {
+                      showToast("Primero debes completar los datos de la tarjeta");
+                      return;
+                    }
                     setTab(entryTab);
                   }}
-                  className={`flex-1 h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-150 [transition-timing-function:var(--ease-smooth)] active:scale-[0.98] ${
+                  className={`flex-1 h-8 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all duration-150 [transition-timing-function:var(--ease-smooth)] active:scale-[0.98] ${
                     tab === entryTab
                       ? "bg-background text-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -359,7 +362,7 @@ export function PaymentModal({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto sheet-scroll">
+          <div className="flex-1 overflow-y-auto sheet-scroll overscroll-contain">
             <AnimatePresence mode="wait">
               {tab === "card" ? (
                 <CardFormSection

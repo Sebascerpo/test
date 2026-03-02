@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setCurrentStep, syncTransactionStatus } from "@/store/payment-store";
+import { syncTransactionStatus } from "@/store/payment-store";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 const POLL_INTERVAL_MS = 5000;
@@ -20,11 +20,6 @@ export function usePendingTransactionRecovery() {
     },
     [dispatch, isOnline, isSyncing],
   );
-
-  useEffect(() => {
-    if (!pendingTransactionReference) return;
-    dispatch(setCurrentStep("result"));
-  }, [dispatch, pendingTransactionReference]);
 
   useEffect(() => {
     if (!pendingTransactionReference || !isOnline) return;

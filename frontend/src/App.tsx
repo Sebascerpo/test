@@ -8,7 +8,7 @@ import { BackdropSummary } from "@/features/checkout/components/BackdropSummary"
 import { TransactionResultPage } from "@/features/transaction/components/TransactionResultPage";
 import { TransactionNotification } from "@/features/transaction/components/TransactionNotification";
 import { ShieldCheckIcon } from "@/components/icons";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { transitions } from "@/lib/motion";
 
@@ -42,6 +42,42 @@ function AppContent() {
     (!!transactionResult || !!pendingTransactionReference);
   const showNotification =
     currentStep === "product" && !!transactionResult && showToast;
+  const shouldLockBackgroundScroll = currentStep !== "product";
+
+  useEffect(() => {
+    if (!shouldLockBackgroundScroll || typeof window === "undefined") return;
+
+    const scrollY = window.scrollY;
+    const { body, documentElement } = document;
+    const previousBodyStyles = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    const previousHtmlOverflow = documentElement.style.overflow;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyStyles.overflow;
+      body.style.position = previousBodyStyles.position;
+      body.style.top = previousBodyStyles.top;
+      body.style.left = previousBodyStyles.left;
+      body.style.right = previousBodyStyles.right;
+      body.style.width = previousBodyStyles.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [shouldLockBackgroundScroll]);
 
   const handleProductSelect = useCallback(() => {
     dispatch(setCurrentStep("payment-info"));

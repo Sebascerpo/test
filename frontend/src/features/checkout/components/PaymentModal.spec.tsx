@@ -65,4 +65,53 @@ describe("PaymentModal card security handling", () => {
     expect(state.cardPreview?.brand).toBe("VISA");
     expect(JSON.stringify(state.cardPreview)).not.toContain("4242424242424242");
   });
+
+  it("shows a reusable validation toast when trying to open envio without valid card data", async () => {
+    const user = userEvent.setup();
+
+    const store = configureStore({
+      reducer: {
+        payment: paymentReducer,
+      },
+      preloadedState: {
+        payment: {
+          ...paymentInitialState,
+          selectedProduct: {
+            id: "product-1",
+            name: "Monitor",
+            description: "QHD",
+            price: 1200000,
+            imageUrl: null,
+            stock: 5,
+          },
+          quantity: 1,
+        },
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <PaymentModal
+          open
+          onOpenChange={() => undefined}
+          product={{
+            id: "product-1",
+            name: "Monitor",
+            description: "QHD",
+            price: 1200000,
+            imageUrl: null,
+            stock: 5,
+          }}
+          onComplete={() => undefined}
+        />
+      </Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /envío/i }));
+
+    expect(
+      screen.getByText("Primero debes completar los datos de la tarjeta"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Datos personales")).not.toBeInTheDocument();
+  });
 });

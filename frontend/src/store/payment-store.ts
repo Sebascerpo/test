@@ -129,6 +129,8 @@ const createClientPaymentReference = (): string => {
 const isTerminalStatus = (status: TransactionResult["status"]): boolean =>
   status !== "PENDING";
 
+const MAX_NOT_FOUND_RETRY_WINDOW_MS = 120_000;
+
 export const processPayment = createAsyncThunk(
   "payment/process",
   async (
@@ -297,6 +299,10 @@ const paymentSlice = createSlice({
         }
       } else {
         state.error = action.payload.error.message;
+        if (action.payload.error.code === "OFFLINE") {
+          state.pendingTransactionReference = null;
+          state.pendingStartedAt = null;
+        }
       }
     });
 
@@ -335,13 +341,28 @@ const paymentSlice = createSlice({
         const pendingAgeMs = state.pendingStartedAt
           ? Date.now() - state.pendingStartedAt
           : Number.MAX_SAFE_INTEGER;
-        const canStillRetry = pendingAgeMs < 120_000;
+        const canStillRetry = pendingAgeMs < MAX_NOT_FOUND_RETRY_WINDOW_MS;
         if (canStillRetry) {
-          state.currentStep = "result";
+          const hasCompleteSummaryContext = Boolean(
+            state.selectedProduct && state.cardPreview && state.deliveryInfo,
+          );
+          if (!hasCompleteSummaryContext || state.currentStep === "result") {
+            state.currentStep = "result";
+          }
           state.error =
             "Estamos confirmando tu pago. Puede tardar unos segundos más.";
           return;
         }
+
+        state.pendingTransactionReference = null;
+        state.pendingStartedAt = null;
+        state.currentStep =
+          state.selectedProduct && state.cardPreview && state.deliveryInfo
+            ? "summary"
+            : "product";
+        state.error =
+          "No encontramos una transacción pendiente para este intento. Puedes volver a pagar con seguridad.";
+        return;
       }
 
       if (!action.payload.error.retryable) {

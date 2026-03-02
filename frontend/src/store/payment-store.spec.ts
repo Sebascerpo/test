@@ -331,6 +331,147 @@ describe("payment-store security and resiliency", () => {
     expect(state.pendingTransactionReference).toBe("TX-PENDING-2");
   });
 
+  it("keeps user in summary when sync returns retryable not-found and checkout context is complete", () => {
+    const store = createTestStore({
+      payment: {
+        ...paymentInitialState,
+        currentStep: "summary",
+        selectedProduct: {
+          id: "product-1",
+          name: "Monitor",
+          description: "QHD",
+          price: 1000,
+          imageUrl: null,
+          stock: 1,
+        },
+        cardPreview: {
+          brand: "VISA",
+          last4: "4242",
+          holderName: "JUAN",
+          expiryMonth: "12",
+          expiryYear: "30",
+        },
+        deliveryInfo: {
+          firstName: "Juan",
+          lastName: "Pérez",
+          email: "juan@example.com",
+          phone: "3001234567",
+          documentType: "CC",
+          documentNumber: "123456",
+          address: "Calle 123",
+          city: "Bogotá",
+          state: "Cundinamarca",
+          postalCode: "110111",
+          additionalInfo: "",
+        },
+        pendingTransactionReference: "TX-PENDING-SUMMARY",
+        pendingStartedAt: Date.now(),
+      },
+    });
+
+    store.dispatch({
+      type: syncTransactionStatus.fulfilled.type,
+      payload: {
+        success: false,
+        error: {
+          code: "TRANSACTION_NOT_FOUND",
+          message: "Aún no visible",
+          retryable: true,
+        },
+      },
+    });
+
+    const state = (store.getState() as any).payment;
+    expect(state.currentStep).toBe("summary");
+    expect(state.pendingTransactionReference).toBe("TX-PENDING-SUMMARY");
+    expect(state.error).toContain("Estamos confirmando tu pago");
+  });
+
+  it("clears stale pending reference when retryable not-found exceeds grace window", () => {
+    const store = createTestStore({
+      payment: {
+        ...paymentInitialState,
+        currentStep: "result",
+        selectedProduct: {
+          id: "product-1",
+          name: "Monitor",
+          description: "QHD",
+          price: 1000,
+          imageUrl: null,
+          stock: 1,
+        },
+        cardPreview: {
+          brand: "VISA",
+          last4: "4242",
+          holderName: "JUAN",
+          expiryMonth: "12",
+          expiryYear: "30",
+        },
+        deliveryInfo: {
+          firstName: "Juan",
+          lastName: "Pérez",
+          email: "juan@example.com",
+          phone: "3001234567",
+          documentType: "CC",
+          documentNumber: "123456",
+          address: "Calle 123",
+          city: "Bogotá",
+          state: "Cundinamarca",
+          postalCode: "110111",
+          additionalInfo: "",
+        },
+        pendingTransactionReference: "TX-PENDING-EXPIRED",
+        pendingStartedAt: Date.now() - 121_000,
+      },
+    });
+
+    store.dispatch({
+      type: syncTransactionStatus.fulfilled.type,
+      payload: {
+        success: false,
+        error: {
+          code: "TRANSACTION_NOT_FOUND",
+          message: "Aún no visible",
+          retryable: true,
+        },
+      },
+    });
+
+    const state = (store.getState() as any).payment;
+    expect(state.pendingTransactionReference).toBeNull();
+    expect(state.pendingStartedAt).toBeNull();
+    expect(state.currentStep).toBe("summary");
+    expect(state.error).toContain("No encontramos una transacción pendiente");
+  });
+
+  it("clears pending marker when payment fails immediately due offline", () => {
+    const store = createTestStore({
+      payment: {
+        ...paymentInitialState,
+        currentStep: "summary",
+        pendingTransactionReference: "TX-OFFLINE-1",
+        pendingStartedAt: Date.now(),
+      },
+    });
+
+    store.dispatch({
+      type: processPayment.fulfilled.type,
+      payload: {
+        success: false,
+        error: {
+          code: "OFFLINE",
+          message: "Sin conexión",
+          retryable: true,
+        },
+      },
+    });
+
+    const state = (store.getState() as any).payment;
+    expect(state.pendingTransactionReference).toBeNull();
+    expect(state.pendingStartedAt).toBeNull();
+    expect(state.currentStep).toBe("summary");
+  });
+
   it("moves user back when sync error is non-retryable", () => {
     const store = createTestStore({
       payment: {
