@@ -2,6 +2,14 @@
 
 NestJS API for resilient checkout flow.
 
+## Docker Compose
+
+Use root-level compose from repository root:
+
+```bash
+docker compose up --build
+```
+
 ## Run
 
 ```bash

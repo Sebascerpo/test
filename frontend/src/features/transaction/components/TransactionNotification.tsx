@@ -10,6 +10,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import { transitions } from "@/lib/motion";
+import { useAppConfig } from "@/lib/app-config";
 
 interface TransactionNotificationProps {
   onDismiss: () => void;
@@ -22,6 +23,7 @@ export function TransactionNotification({
     (s) => s.payment,
   );
   const shouldReduceMotion = useReducedMotion();
+  const appConfig = useAppConfig();
   const [visible, setVisible] = useState(true);
 
   const isApproved = transactionResult?.status === "APPROVED";
@@ -61,7 +63,7 @@ export function TransactionNotification({
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
-      currency: import.meta.env?.VITE_CURRENCY || "COP",
+      currency: appConfig.currency,
       minimumFractionDigits: 0,
     }).format(p);
 

@@ -73,21 +73,22 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class InMemoryProductRepository implements ProductRepositoryPort {
-  async findAll(): Promise<Product[]> {
-    return [...products];
+  findAll(): Promise<Product[]> {
+    return Promise.resolve([...products]);
   }
 
-  async findById(id: string): Promise<Product | null> {
-    return products.find((p) => p.id === id) || null;
+  findById(id: string): Promise<Product | null> {
+    return Promise.resolve(products.find((p) => p.id === id) || null);
   }
 
-  async updateStock(productId: string, quantityChange: number): Promise<void> {
+  updateStock(productId: string, quantityChange: number): Promise<void> {
     const product = products.find((p) => p.id === productId);
     if (product) {
       const newStock = product.stock + quantityChange;
       product.stock = newStock;
       product.updatedAt = new Date();
     }
+    return Promise.resolve();
   }
 
   // Reset for testing

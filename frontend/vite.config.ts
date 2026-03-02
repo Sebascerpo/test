@@ -19,6 +19,10 @@ export default defineConfig({
         target: process.env.VITE_API_PROXY_TARGET || "http://localhost:3002",
         changeOrigin: true,
       },
+      "/products": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://localhost:3002",
+        changeOrigin: true,
+      },
     },
   },
 });

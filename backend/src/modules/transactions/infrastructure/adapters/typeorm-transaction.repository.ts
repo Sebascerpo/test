@@ -81,7 +81,7 @@ export class TypeOrmTransactionRepository implements TransactionRepositoryPort {
     return transactions.map(this.toDomain);
   }
 
-  private toDomain(entity: TransactionOrmEntity): Transaction {
+  private toDomain = (entity: TransactionOrmEntity): Transaction => {
     return {
       id: entity.id,
       reference: entity.reference,
@@ -100,5 +100,5 @@ export class TypeOrmTransactionRepository implements TransactionRepositoryPort {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };
-  }
+  };
 }

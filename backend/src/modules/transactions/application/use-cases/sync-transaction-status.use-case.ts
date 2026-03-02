@@ -19,6 +19,36 @@ export type SyncTransactionStatusUseCase = (
   transactionIdOrReference: string,
 ) => ResultAsync<SyncTransactionStatusResult>;
 
+const mapExternalStatusToTransactionStatus = (
+  externalStatus: string,
+): TransactionStatus => {
+  switch (externalStatus) {
+    case 'APPROVED':
+      return TransactionStatus.APPROVED;
+    case 'DECLINED':
+      return TransactionStatus.DECLINED;
+    case 'PENDING':
+      return TransactionStatus.PENDING;
+    default:
+      return TransactionStatus.ERROR;
+  }
+};
+
+const findTransactionByIdOrReference = async (
+  idOrReference: string,
+  transactionRepository: TransactionRepositoryPort,
+): Promise<Transaction | null> => {
+  let transaction = await transactionRepository.findByReference(idOrReference);
+  if (!transaction) {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrReference)) {
+      transaction = await transactionRepository.findById(idOrReference);
+    }
+  }
+  return transaction;
+};
+
 export const createSyncTransactionStatusUseCase = (
   transactionRepository: TransactionRepositoryPort,
   paymentGateway: PaymentGatewayPort,
@@ -28,15 +58,10 @@ export const createSyncTransactionStatusUseCase = (
     idOrReference: string,
   ): ResultAsync<SyncTransactionStatusResult> => {
     try {
-      let transaction =
-        await transactionRepository.findByReference(idOrReference);
-      if (!transaction) {
-        const uuidRegex =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(idOrReference)) {
-          transaction = await transactionRepository.findById(idOrReference);
-        }
-      }
+      const transaction = await findTransactionByIdOrReference(
+        idOrReference,
+        transactionRepository,
+      );
 
       if (!transaction) {
         return ok({
@@ -61,21 +86,9 @@ export const createSyncTransactionStatusUseCase = (
         return ok({ transaction, updated: false });
       }
 
-      let newStatus: TransactionStatus;
-      switch (externalStatusResult.value.status) {
-        case 'APPROVED':
-          newStatus = TransactionStatus.APPROVED;
-          break;
-        case 'DECLINED':
-          newStatus = TransactionStatus.DECLINED;
-          break;
-        case 'PENDING':
-          newStatus = TransactionStatus.PENDING;
-          break;
-        default:
-          newStatus = TransactionStatus.ERROR;
-          break;
-      }
+      const newStatus = mapExternalStatusToTransactionStatus(
+        externalStatusResult.value.status,
+      );
 
       if (newStatus === transaction.status) {
         return ok({ transaction, updated: false });

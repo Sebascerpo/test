@@ -49,6 +49,7 @@ Swagger UI:
 
 Core endpoints:
 
+- `GET /api/app/config`
 - `GET /api/products`
 - `GET /api/products/:id`
 - `POST /api/customers`
@@ -104,7 +105,6 @@ Core endpoints:
 ### 1) Full Stack (DB + Backend + Frontend)
 
 ```bash
-cd backend
 docker compose up --build
 ```
 
@@ -150,14 +150,14 @@ npm run test
 npm run test:cov
 ```
 
-Note: Frontend uses Vitest + Testing Library (`jest-dom`) with Jest-compatible assertion style and thresholds `>= 80%`.
+Note: Frontend uses Jest + Testing Library (`jest-dom`) with thresholds `>= 80%`.
 
 Latest frontend coverage (`npm run test:cov`):
 
-- Statements: `96.42%`
-- Branches: `85.43%`
-- Functions: `96.77%`
-- Lines: `96.42%`
+- Statements: `98.16%`
+- Branches: `83.01%`
+- Functions: `94.28%`
+- Lines: `98.16%`
 
 Coverage target:
 
@@ -193,3 +193,9 @@ Automated contract checks:
 - Helmet enabled.
 - Input validation via global `ValidationPipe`.
 - CORS allowlist configurable via `CORS_ORIGINS`.
+
+## Config & Seed Notes
+
+- Backend is the source of truth for checkout config (`APP_CURRENCY`, `APP_BASE_FEE`, `APP_DELIVERY_FEE`).
+- Frontend consumes runtime config via `GET /api/app/config` and falls back to `VITE_*` only if needed.
+- Product seeder converges to 10 catalog products with image URLs, idempotently by product `name`.

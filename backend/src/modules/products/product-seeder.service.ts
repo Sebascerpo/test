@@ -13,77 +13,104 @@ export class ProductSeederService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     const products = [
       {
-        name: 'Wireless Headphones',
+        name: 'Apple iPhone 16 Pro Max 256GB',
         description:
-          'Premium wireless headphones with active noise cancellation and 30-hour battery life.',
-        price: 149990,
-        stock: 15,
-        imageUrl:
-          'https://images.unsplash.com/photo-1505740487311-c1b9204cd153?q=80&w=1000&auto=format&fit=crop',
-        category: 'Electronics',
+          'Smartphone flagship con pantalla OLED de alta tasa de refresco, cámara avanzada y gran autonomía para uso profesional.',
+        price: 6999990,
+        stock: 9,
+        imageUrl: '/api/products/iphone-16-pro-max-256gb.webp',
+        category: 'Smartphones',
       },
       {
-        name: 'Smart Watch Pro',
+        name: 'Samsung Galaxy S26 Ultra 256GB',
         description:
-          'Advanced smartwatch with health monitoring, GPS, and 7-day battery life.',
-        price: 299990,
-        stock: 8,
-        imageUrl:
-          'https://images.unsplash.com/photo-1523275335660-02244a2936f4?q=80&w=1000&auto=format&fit=crop',
-        category: 'Electronics',
+          'Gama alta Android con cámara de alto rendimiento, batería de larga duración y experiencia premium para productividad y contenido.',
+        price: 6799990,
+        stock: 11,
+        imageUrl: '/api/products/samsung-s26-ultra-256gb.webp',
+        category: 'Smartphones',
       },
       {
-        name: 'Mechanical Keyboard',
+        name: 'Apple MacBook Pro M4 Pro',
         description:
-          'RGB mechanical keyboard with Cherry MX switches and programmable keys.',
-        price: 179990,
-        stock: 12,
-        imageUrl:
-          'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?q=80&w=1000&auto=format&fit=crop',
+          'Portátil profesional para desarrollo y creación, con alto rendimiento sostenido, excelente autonomía y pantalla de alta fidelidad.',
+        price: 10999990,
+        stock: 6,
+        imageUrl: '/api/products/macbook-m4-pro.jpg',
+        category: 'Computadores',
+      },
+      {
+        name: 'NVIDIA GeForce RTX 3050',
+        description:
+          'Tarjeta gráfica para gaming y trabajo creativo con buen equilibrio entre rendimiento, consumo y precio.',
+        price: 1499990,
+        stock: 13,
+        imageUrl: '/api/products/nvidia-rtx-3050.jpg',
+        category: 'Componentes',
+      },
+      {
+        name: 'Logitech MX Keys',
+        description:
+          'Teclado inalámbrico premium, cómodo para jornadas largas, con gran precisión y batería de alta duración.',
+        price: 549990,
+        stock: 20,
+        imageUrl: '/api/products/logitech-mx-keys.webp',
         category: 'Accessories',
       },
       {
-        name: 'Wireless Mouse',
+        name: 'Garmin Forerunner 965',
         description:
-          'Ergonomic wireless mouse with adjustable DPI and silent clicks.',
-        price: 79990,
-        stock: 25,
-        imageUrl:
-          'https://images.unsplash.com/photo-1527866959252-deab85ef7d1b?q=80&w=1000&auto=format&fit=crop',
-        category: 'Accessories',
+          'Reloj deportivo avanzado con métricas de entrenamiento, GPS preciso y funciones completas para running y triatlón.',
+        price: 2899990,
+        stock: 7,
+        imageUrl: '/api/products/garmin-forerunner-965.webp',
+        category: 'Wearables',
       },
       {
-        name: 'Fast Charger 65W',
+        name: 'Samsung Smart TV QLED 85"',
         description:
-          'Universal fast charger compatible with laptops, phones, and tablets.',
-        price: 59990,
-        stock: 30,
-        imageUrl:
-          'https://images.unsplash.com/photo-1612815154858-60aa4c59ebe1?q=80&w=1000&auto=format&fit=crop',
-        category: 'Accessories',
+          'Televisor QLED 4K de gran formato para entretenimiento inmersivo, ideal para cine en casa y gaming.',
+        price: 12499990,
+        stock: 4,
+        imageUrl: '/api/products/samsung-qled-85in.webp',
+        category: 'Televisores',
       },
     ];
 
-    const currentCount = await this.productRepository.count();
+    let created = 0;
+    let updated = 0;
 
-    if (currentCount === 0) {
-      await this.productRepository.save(products);
-      console.log('Database seeded with products and real images.');
-    } else {
-      for (const productData of products) {
-        const existing = await this.productRepository.findOne({
-          where: { name: productData.name },
-        });
+    for (const productData of products) {
+      const existing = await this.productRepository.findOne({
+        where: { name: productData.name },
+      });
 
-        if (
-          existing &&
-          (existing.imageUrl.startsWith('/products/') || !existing.imageUrl)
-        ) {
-          existing.imageUrl = productData.imageUrl;
-          await this.productRepository.save(existing);
-          console.log(`Updated image for product: ${productData.name}`);
-        }
+      if (!existing) {
+        await this.productRepository.save(productData);
+        created += 1;
+        continue;
+      }
+
+      const shouldUpdate =
+        existing.description !== productData.description ||
+        existing.price !== productData.price ||
+        existing.stock !== productData.stock ||
+        existing.imageUrl !== productData.imageUrl ||
+        existing.category !== productData.category;
+
+      if (shouldUpdate) {
+        existing.description = productData.description;
+        existing.price = productData.price;
+        existing.stock = productData.stock;
+        existing.imageUrl = productData.imageUrl;
+        existing.category = productData.category;
+        await this.productRepository.save(existing);
+        updated += 1;
       }
     }
+
+    console.log(
+      `Product seeder converged ${products.length} products (${created} created, ${updated} updated).`,
+    );
   }
 }

@@ -16,21 +16,16 @@ import { processPayment } from "@/store/payment-store";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ValidationToast } from "@/components/ui/ValidationToast";
 import { transitions } from "@/lib/motion";
-
-const FEES = {
-  baseFee: Number(import.meta.env?.VITE_BASE_FEE ?? 2500),
-  deliveryFee: Number(import.meta.env?.VITE_DELIVERY_FEE ?? 5000),
-};
-const APP_CURRENCY = import.meta.env?.VITE_CURRENCY || "COP";
+import { useAppConfig } from "@/lib/app-config";
 
 interface BackdropSummaryProps {
   onBack: () => void;
 }
 
-const fmt = (p: number) =>
+const fmt = (p: number, currency: string) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: APP_CURRENCY,
+    currency,
     minimumFractionDigits: 0,
   }).format(p);
 
@@ -63,6 +58,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
   const dispatch = useAppDispatch();
   const { isOnline } = useNetworkStatus();
   const shouldReduceMotion = useReducedMotion();
+  const appConfig = useAppConfig();
   const {
     selectedProduct,
     quantity,
@@ -88,7 +84,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
   if (!selectedProduct || !cardPreview || !deliveryInfo) return null;
 
   const productTotal = selectedProduct.price * quantity;
-  const total = productTotal + FEES.baseFee + FEES.deliveryFee;
+  const total = productTotal + appConfig.baseFee + appConfig.deliveryFee;
 
   const handlePay = async () => {
     if (tapped || !isOnline || isLoading) return;
@@ -169,7 +165,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
               </p>
             </div>
             <p className="font-semibold text-sm flex-shrink-0">
-              {fmt(selectedProduct.price)}
+              {fmt(selectedProduct.price, appConfig.currency)}
             </p>
           </div>
 
@@ -214,11 +210,17 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
           <div className="rounded-2xl border border-border px-4 py-1 surface-elevated shadow-xs">
             <Row
               label={`Producto (${quantity})`}
-              value={fmt(selectedProduct.price * quantity)}
+              value={fmt(selectedProduct.price * quantity, appConfig.currency)}
             />
-            <Row label="Tarifa de servicio" value={fmt(FEES.baseFee)} />
-            <Row label="Costo de envío" value={fmt(FEES.deliveryFee)} />
-            <Row label="Total" value={fmt(total)} total />
+            <Row
+              label="Tarifa de servicio"
+              value={fmt(appConfig.baseFee, appConfig.currency)}
+            />
+            <Row
+              label="Costo de envío"
+              value={fmt(appConfig.deliveryFee, appConfig.currency)}
+            />
+            <Row label="Total" value={fmt(total, appConfig.currency)} total />
           </div>
 
           {/* Trust */}
@@ -303,7 +305,7 @@ export function BackdropSummary({ onBack }: BackdropSummaryProps) {
               ? "Procesando..."
               : !isOnline
                 ? "Sin conexión"
-                : `Pagar ${fmt(total)}`}
+                : `Pagar ${fmt(total, appConfig.currency)}`}
           </motion.button>
         </div>
       </motion.div>

@@ -26,6 +26,14 @@ const formatPrice = (price: number) =>
     minimumFractionDigits: 0,
   }).format(price);
 
+const resolveProductImageSrc = (imageUrl: string | null | undefined) => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith("/products/")) {
+    return imageUrl.replace("/products/", "/api/products/");
+  }
+  return imageUrl;
+};
+
 function ProductSkeleton() {
   return (
     <div className="rounded-2xl border border-border surface-elevated overflow-hidden">
@@ -76,10 +84,10 @@ function ProductCard({ product, index, onSelect }: ProductCardProps) {
       >
         {/* Image */}
         <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
-          {product.imageUrl ? (
+          {resolveProductImageSrc(product.imageUrl) ? (
             <>
               <img
-                src={product.imageUrl}
+                src={resolveProductImageSrc(product.imageUrl) || undefined}
                 alt={product.name}
                 loading="lazy"
                 decoding="async"

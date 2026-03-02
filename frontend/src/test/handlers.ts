@@ -13,6 +13,16 @@ const productFixture = [
 ];
 
 export const handlers = [
+  http.get("*/api/app/config", () => {
+    return HttpResponse.json({
+      success: true,
+      data: {
+        currency: "COP",
+        baseFee: 2500,
+        deliveryFee: 5000,
+      },
+    });
+  }),
   http.get("*/api/products", () => {
     return HttpResponse.json({ success: true, data: productFixture });
   }),

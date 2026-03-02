@@ -4,15 +4,38 @@ import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { randomUUID } from 'crypto';
+import { join } from 'path';
+import { existsSync } from 'fs';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { Request, Response, NextFunction } from 'express';
 
 const PORT = 3002;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
   app.use(helmet());
-  app.use((req, res, next) => {
+  const productAssetsCandidates = [
+    join(__dirname, '..', 'public', 'products'),
+    join(process.cwd(), 'public', 'products'),
+    join(process.cwd(), 'backend', 'public', 'products'),
+  ];
+  const productAssetsPath =
+    productAssetsCandidates.find((candidate) => existsSync(candidate)) ??
+    productAssetsCandidates[0];
+
+  // Backward compatible static paths for product images:
+  // - /products/* (legacy)
+  // - /api/products/* (preferred, always under API proxy)
+  app.useStaticAssets(productAssetsPath, {
+    prefix: '/products/',
+  });
+  app.useStaticAssets(productAssetsPath, {
+    prefix: '/api/products/',
+  });
+  console.log(`🖼️ Product assets path: ${productAssetsPath}`);
+  app.use((req: Request, res: Response, next: NextFunction) => {
     const requestId = randomUUID();
     res.setHeader('x-request-id', requestId);
     next();

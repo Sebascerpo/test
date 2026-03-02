@@ -3,6 +3,7 @@ import {
   Transaction,
   TransactionStatus,
   TransactionCreateInput,
+  PaymentMethod,
 } from '../../domain/transaction.entity';
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,7 +23,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class InMemoryTransactionRepository implements TransactionRepositoryPort {
-  async create(input: TransactionCreateInput): Promise<Transaction> {
+  create(input: TransactionCreateInput): Promise<Transaction> {
     const id = uuidv4();
     const now = new Date();
     const reference = generateReference();
@@ -38,7 +39,7 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
       quantity: input.quantity,
       totalAmount: input.amount + input.baseFee + input.deliveryFee,
       status: TransactionStatus.PENDING,
-      paymentMethod: 'CREDIT_CARD' as any,
+      paymentMethod: PaymentMethod.CREDIT_CARD,
       createdAt: now,
       updatedAt: now,
     };
@@ -46,21 +47,21 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
     transactions.set(id, transaction);
     referenceIndex.set(reference, id);
 
-    return { ...transaction };
+    return Promise.resolve({ ...transaction });
   }
 
-  async findById(id: string): Promise<Transaction | null> {
+  findById(id: string): Promise<Transaction | null> {
     const transaction = transactions.get(id);
-    return transaction ? { ...transaction } : null;
+    return Promise.resolve(transaction ? { ...transaction } : null);
   }
 
-  async findByReference(reference: string): Promise<Transaction | null> {
+  findByReference(reference: string): Promise<Transaction | null> {
     const id = referenceIndex.get(reference);
-    if (!id) return null;
+    if (!id) return Promise.resolve(null);
     return this.findById(id);
   }
 
-  async updateStatus(
+  updateStatus(
     id: string,
     status: TransactionStatus,
     externalData?: {
@@ -70,7 +71,7 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
     },
   ): Promise<Transaction | null> {
     const transaction = transactions.get(id);
-    if (!transaction) return null;
+    if (!transaction) return Promise.resolve(null);
 
     const updated: Transaction = {
       ...transaction,
@@ -88,11 +89,13 @@ export class InMemoryTransactionRepository implements TransactionRepositoryPort 
     };
 
     transactions.set(id, updated);
-    return { ...updated };
+    return Promise.resolve({ ...updated });
   }
 
-  async findAll(): Promise<Transaction[]> {
-    return Array.from(transactions.values()).map((t) => ({ ...t }));
+  findAll(): Promise<Transaction[]> {
+    return Promise.resolve(
+      Array.from(transactions.values()).map((t) => ({ ...t })),
+    );
   }
 
   // Reset for testing

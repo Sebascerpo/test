@@ -5,6 +5,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { HealthController } from './modules/shared/infrastructure/health.controller';
+import { AppConfigController } from './modules/shared/infrastructure/app-config.controller';
 import { PaymentModule } from './modules/payment/payment.module';
 import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 
@@ -20,6 +21,6 @@ import { DeliveriesModule } from './modules/deliveries/deliveries.module';
     PaymentModule,
     DeliveriesModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, AppConfigController],
 })
 export class AppModule {}

@@ -18,6 +18,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         migrations: ['dist/migrations/*.js'],
         migrationsRun: true,
         logging: config.get<string>('NODE_ENV') === 'development',
+        ssl:
+          config.get<string>('DATABASE_HOST', 'localhost') !== 'localhost'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
       inject: [ConfigService],
     }),

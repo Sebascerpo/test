@@ -5,13 +5,12 @@ import {
   TransactionResult,
 } from "@/store/payment-store";
 import { PackageIcon } from "@/components/icons";
+import { useAppConfig } from "@/lib/app-config";
 
-const APP_CURRENCY = import.meta.env?.VITE_CURRENCY || "COP";
-
-const fmt = (p: number) =>
+const fmt = (p: number, currency: string) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: APP_CURRENCY,
+    currency,
     minimumFractionDigits: 0,
   }).format(p);
 
@@ -30,6 +29,7 @@ export function TransactionDetailsCard({
   cardPreview,
   deliveryInfo,
 }: TransactionDetailsCardProps) {
+  const appConfig = useAppConfig();
   const isDeclined =
     transaction.status === "DECLINED" ||
     transaction.status === "ERROR" ||
@@ -53,7 +53,7 @@ export function TransactionDetailsCard({
             </div>
             <p className="text-sm font-semibold flex-shrink-0">
               {transaction.amount > 0
-                ? fmt(transaction.amount)
+                ? fmt(transaction.amount, appConfig.currency)
                 : "Por confirmar"}
             </p>
           </div>

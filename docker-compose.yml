@@ -2,16 +2,18 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: payment-postgres
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_USER: ${DATABASE_USERNAME}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USERNAME:-payment_user}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-payment_password}
+      POSTGRES_DB: ${DATABASE_NAME:-payment_db}
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}']
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-payment_user} -d ${DATABASE_NAME:-payment_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,15 +23,15 @@ services:
     container_name: payment-backend
     working_dir: /workspace/backend
     volumes:
-      - ../:/workspace
+      - ./:/workspace
     env_file:
-      - ./.env
+      - ./backend/.env
     environment:
       DATABASE_HOST: postgres
       NODE_ENV: development
     command: sh -c "npm install && npm run start:dev"
     ports:
-      - '3002:3002'
+      - "3002:3002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,12 +41,12 @@ services:
     container_name: payment-frontend
     working_dir: /workspace/frontend
     volumes:
-      - ../:/workspace
+      - ./:/workspace
     environment:
       VITE_API_PROXY_TARGET: http://backend:3002
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     ports:
-      - '5173:5173'
+      - "5173:5173"
     depends_on:
       - backend
 
